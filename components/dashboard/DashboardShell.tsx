@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NovaOsAccountBar } from "@/components/dashboard/NovaOsAccountBar";
 import { SITE_NAME } from "@/lib/constants";
 
 export function DashboardShell({
@@ -32,7 +33,7 @@ export function DashboardShell({
             </nav>
           </div>
           <div className="flex items-center gap-2 text-sm text-slate-600 sm:gap-3">
-            <span className="hidden max-w-[160px] truncate sm:inline">{email}</span>
+            <NovaOsAccountBar email={email} />
             <form action="/auth/signout" method="post">
               <button
                 type="submit"
