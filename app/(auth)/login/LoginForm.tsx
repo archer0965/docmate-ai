@@ -151,6 +151,14 @@ export function LoginForm() {
           {mode === "login" ? "還沒有帳號？改為註冊" : "已有帳號？改為登入"}
         </button>
 
+        {mode === "login" ? (
+          <p className="mt-3 text-sm">
+            <Link href="/forgot-password" className="text-brand-700 hover:underline">
+              忘記密碼？
+            </Link>
+          </p>
+        ) : null}
+
         {(authError || message) && (
           <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
             {authError || message}
