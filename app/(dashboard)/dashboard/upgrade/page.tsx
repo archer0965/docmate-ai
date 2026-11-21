@@ -2,7 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { UpgradePlans } from "@/components/billing/UpgradePlans";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import { SetupRequired } from "@/components/setup/SetupRequired";
 import { PLANS } from "@/lib/plans";
+import { hasSupabasePublicEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { getFreshProfile } from "@/lib/usage/quota";
 
@@ -13,6 +15,8 @@ export default async function UpgradePage({
 }: {
   searchParams: Promise<{ failed?: string }>;
 }) {
+  if (!hasSupabasePublicEnv()) return <SetupRequired />;
+
   const supabase = await createClient();
   const {
     data: { user },

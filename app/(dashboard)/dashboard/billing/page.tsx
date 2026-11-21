@@ -2,8 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BillingManager } from "@/components/billing/BillingManager";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import { SetupRequired } from "@/components/setup/SetupRequired";
 import { getSubscription, listOrders } from "@/lib/billing/orders";
 import { getPlan } from "@/lib/plans";
+import { hasSupabasePublicEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { getFreshProfile } from "@/lib/usage/quota";
 
@@ -14,6 +16,8 @@ export default async function BillingPage({
 }: {
   searchParams: Promise<{ upgraded?: string }>;
 }) {
+  if (!hasSupabasePublicEnv()) return <SetupRequired />;
+
   const supabase = await createClient();
   const {
     data: { user },

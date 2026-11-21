@@ -8,11 +8,12 @@ import type { PdfPageText } from "@/lib/pdf/parse";
 export async function summarizeDocument(pages: PdfPageText[]): Promise<string> {
   const model = getGeminiModel();
 
-  // 控制送入長度，避免一次塞爆 token
+  // 控制送入長度，避免一次塞爆 token / 成本
   const sample = pages
-    .map((p) => `【第 ${p.pageNumber} 頁】\n${p.text}`)
+    .slice(0, 80)
+    .map((p) => `【第 ${p.pageNumber} 頁】\n${p.text.slice(0, 2000)}`)
     .join("\n\n")
-    .slice(0, 60000);
+    .slice(0, 40000);
 
   const prompt = `你是 DocMate AI 文件助理。請根據下列 PDF 內容，用「繁體中文（台灣）」撰寫摘要。
 

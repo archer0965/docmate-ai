@@ -1,17 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { getSupabasePublicEnv } from "@/lib/supabase/env";
 
 /**
  * 伺服器端 Supabase 客戶端（跟隨登入 Cookie）
  */
 export async function createClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !anonKey) {
-    throw new Error("缺少 NEXT_PUBLIC_SUPABASE_URL 或 NEXT_PUBLIC_SUPABASE_ANON_KEY");
-  }
-
+  const { url, anonKey } = getSupabasePublicEnv();
   const cookieStore = await cookies();
 
   return createServerClient(url, anonKey, {

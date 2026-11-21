@@ -13,14 +13,15 @@ export type AskResult = {
 export async function askDocumentQuestion(
   question: string,
   chunks: TextChunk[],
+  maxChunks = 40,
 ): Promise<AskResult> {
   const model = getGeminiModel();
 
   const context = chunks
-    .slice(0, 40)
+    .slice(0, maxChunks)
     .map((c) => `（頁碼 ${c.pageNumber}｜段落 ${c.chunkIndex}）\n${c.content}`)
     .join("\n\n")
-    .slice(0, 70000);
+    .slice(0, 50000);
 
   const prompt = `你是 DocMate AI。只能根據「文件內容」用繁體中文（台灣）回答。
 

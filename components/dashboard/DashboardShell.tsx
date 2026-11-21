@@ -11,12 +11,15 @@ export function DashboardShell({
   return (
     <div className="min-h-[100svh] bg-gradient-to-b from-brand-50/80 to-white">
       <header className="border-b border-brand-100 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-4 sm:gap-6">
-            <Link href="/dashboard" className="font-display text-lg font-semibold text-slate-900">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-6">
+            <Link
+              href="/dashboard"
+              className="shrink-0 font-display text-base font-semibold text-slate-900 sm:text-lg"
+            >
               {SITE_NAME}
             </Link>
-            <nav className="flex gap-3 text-sm text-slate-600 sm:gap-4">
+            <nav className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-600">
               <Link href="/dashboard" className="hover:text-brand-700">
                 文件
               </Link>
@@ -28,7 +31,7 @@ export function DashboardShell({
               </Link>
             </nav>
           </div>
-          <div className="flex items-center gap-3 text-sm text-slate-600">
+          <div className="flex items-center gap-2 text-sm text-slate-600 sm:gap-3">
             <span className="hidden max-w-[160px] truncate sm:inline">{email}</span>
             <form action="/auth/signout" method="post">
               <button
@@ -41,7 +44,7 @@ export function DashboardShell({
           </div>
         </div>
       </header>
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</div>
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</div>
     </div>
   );
 }

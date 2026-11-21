@@ -27,7 +27,7 @@ export function Hero() {
 
           <h1 className="animate-fade-up animation-delay-100 mt-4 font-display text-4xl font-bold leading-[1.15] tracking-tight text-slate-900 sm:text-5xl lg:text-[3.4rem]">
             上傳 PDF，立刻獲得
-            <span className="block bg-gradient-to-r from-brand-600 to-accent-500 bg-clip-text text-transparent">
+            <span className="mt-1 block text-brand-700 sm:mt-0">
               摘要、問答與複習考題
             </span>
           </h1>

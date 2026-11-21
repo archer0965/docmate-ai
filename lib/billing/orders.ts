@@ -5,14 +5,23 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { PaymentOrder, SubscriptionRow } from "@/lib/billing/types";
 
 function billingSecret() {
-  const secret =
-    process.env.BILLING_TEST_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    "";
-  if (!secret) {
+  const dedicated = process.env.BILLING_TEST_SECRET;
+  if (dedicated) return dedicated;
+
+  // 正式環境必須獨立密鑰，避免與 service role 共用
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production") {
+    throw new AppError(
+      "internal_error",
+      "正式環境請設定 BILLING_TEST_SECRET。",
+      500,
+    );
+  }
+
+  const fallback = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  if (!fallback) {
     throw new AppError("internal_error", "伺服器尚未設定金流測試密鑰。", 500);
   }
-  return secret;
+  return fallback;
 }
 
 /** 產生測試結帳簽章（防止竄改 orderId） */

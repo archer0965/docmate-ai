@@ -3,13 +3,17 @@ import { redirect } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { DocumentList } from "@/components/dashboard/DocumentList";
 import { UploadPanel } from "@/components/dashboard/UploadPanel";
+import { SetupRequired } from "@/components/setup/SetupRequired";
 import { getPlan } from "@/lib/plans";
+import { hasSupabasePublicEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { getFreshProfile } from "@/lib/usage/quota";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  if (!hasSupabasePublicEnv()) return <SetupRequired />;
+
   const supabase = await createClient();
   const {
     data: { user },

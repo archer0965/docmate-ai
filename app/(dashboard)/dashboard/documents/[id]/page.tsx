@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AskPanel } from "@/components/dashboard/AskPanel";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import { SetupRequired } from "@/components/setup/SetupRequired";
 import { getPlan } from "@/lib/plans";
+import { hasSupabasePublicEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { getFreshProfile } from "@/lib/usage/quota";
 
@@ -11,6 +13,8 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ id: string }> };
 
 export default async function DocumentDetailPage({ params }: Props) {
+  if (!hasSupabasePublicEnv()) return <SetupRequired />;
+
   const { id } = await params;
   const supabase = await createClient();
   const {

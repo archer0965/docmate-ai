@@ -12,7 +12,7 @@ AI 文件智慧助理（繁體中文）。技術：Next.js App Router、Supabase
 - [x] 文件問答（含來源頁碼與對話紀錄）
 - [x] 額度檢查（未登入 / 檔案過大 / 額度不足等錯誤處理）
 - [x] 會員方案、升級頁、訂閱管理、測試金流（伺服器驗證後更新方案）
-- [ ] Vercel 正式部署檢查
+- [x] 上線前安全硬化（RLS、額度預扣、PDF 驗證、rate limit、Vercel 設定）
 
 ## 快速開始
 
@@ -43,6 +43,7 @@ cp .env.example .env.local
 1. `supabase/migrations/001_init_docmate.sql`
 2. `supabase/migrations/002_lock_profile_quota.sql`（若 001 已含鎖定政策可略過）
 3. `supabase/migrations/003_billing_subscriptions.sql`
+4. `supabase/migrations/004_launch_hardening.sql`
 
 ### 4. 啟用登入
 

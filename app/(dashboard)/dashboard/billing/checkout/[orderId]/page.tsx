@@ -2,7 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { TestCheckoutClient } from "@/components/billing/TestCheckoutClient";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import { SetupRequired } from "@/components/setup/SetupRequired";
 import { getOrderForUser, verifyCheckoutToken } from "@/lib/billing/orders";
+import { hasSupabasePublicEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +15,8 @@ type Props = {
 };
 
 export default async function CheckoutPage({ params, searchParams }: Props) {
+  if (!hasSupabasePublicEnv()) return <SetupRequired />;
+
   const { orderId } = await params;
   const { token } = await searchParams;
 
