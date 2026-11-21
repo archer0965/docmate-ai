@@ -12,9 +12,11 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const nextPath = safeInternalPath(searchParams.get("next"), "/dashboard");
 
+  const initialMode =
+    searchParams.get("mode") === "signup" ? "signup" : "login";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
