@@ -1,6 +1,8 @@
-# DocMate AI
+# Nova AI Doc
 
-AI 文件智慧助理（繁體中文）。技術：Next.js App Router、Supabase、Google Gemini。
+拓新雲端 NovaOS 子品牌 · AI 文件智慧助理（繁體中文）。技術：Next.js App Router、Supabase、Google Gemini。
+
+**正式網址：** https://docmate-ai-one.vercel.app
 
 ## 目前進度
 
@@ -85,8 +87,8 @@ npm run dev
 Cursor Apps `publish-app` 在此環境不可用時，以 Vercel 作為固定公開 URL（更新後網址不變）：
 
 1. 開啟 [Vercel → Add New Project](https://vercel.com/new)，匯入 `https://github.com/archer0965/docmate-ai`（branch：`main`）。
-2. Project Name 請用 **`docmate-ai`**，生產網址即為：
-   **https://docmate-ai.vercel.app**
+2. Vercel project 名稱可為 `docmate-ai`；目前正式公開網址為：
+   **https://docmate-ai-one.vercel.app**
 3. 在 Vercel → Project → Settings → Environment Variables 設定（Production + Preview）：
 
 | 變數 | 說明 |
@@ -99,7 +101,7 @@ Cursor Apps `publish-app` 在此環境不可用時，以 Vercel 作為固定公�
 | `NEXT_PUBLIC_NOVAOS_URL` | 可選，拓新雲端主站（預設 https://paycheck.com.de） |
 
 4. Supabase Auth → Redirect URLs 加上：
-   `https://docmate-ai.vercel.app/auth/callback`
+   `https://docmate-ai-one.vercel.app/auth/callback`
 5. Deploy。之後每次 push `main` 會自動重新部署，公開網址不變。
 
 可選：若要用 GitHub Actions 部署，見 `.github/workflows/vercel-deploy.yml`，並在 repo Secrets 設定 `VERCEL_TOKEN`、`VERCEL_ORG_ID`、`VERCEL_PROJECT_ID`。

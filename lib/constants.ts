@@ -3,7 +3,11 @@
  * 初學者提示：之後若要改品牌名稱、導覽連結，優先改這裡。
  */
 
-export const SITE_NAME = "DocMate AI";
+/** Canonical product name (NovaOS sub-brand). */
+export const SITE_NAME = "Nova AI Doc";
+
+/** Production URL on Vercel. */
+export const SITE_URL = "https://docmate-ai-one.vercel.app";
 
 export const SITE_TAGLINE = "把長文件變成可讀、可問、可複習的知識";
 

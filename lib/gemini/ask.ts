@@ -23,7 +23,7 @@ export async function askDocumentQuestion(
     .join("\n\n")
     .slice(0, 50000);
 
-  const prompt = `你是 DocMate AI。只能根據「文件內容」用繁體中文（台灣）回答。
+  const prompt = `你是 Nova AI Doc。只能根據「文件內容」用繁體中文（台灣）回答。
 
 規則：
 1. 不可使用文件以外的知識來編造答案
@@ -67,7 +67,7 @@ ${question}`;
     return { answer, sourcePages };
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error("[DocMate] gemini ask failed", error);
+    console.error("[Nova AI Doc] gemini ask failed", error);
     throw new AppError("ai_error", "AI 問答服務暫時無法使用，請稍後再試。", 502);
   }
 }

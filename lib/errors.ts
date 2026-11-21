@@ -34,7 +34,7 @@ export function jsonError(error: unknown) {
     );
   }
 
-  console.error("[DocMate] unexpected error", error);
+  console.error("[Nova AI Doc] unexpected error", error);
   return NextResponse.json(
     {
       error: {

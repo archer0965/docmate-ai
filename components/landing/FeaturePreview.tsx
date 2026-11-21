@@ -25,7 +25,7 @@ export function FeaturePreview() {
             一份文件，多種學習方式
           </h2>
           <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
-            DocMate AI 幫你把靜態 PDF 轉成可摘要、可對話、可複習的學習流程。
+            Nova AI Doc 幫你把靜態 PDF 轉成可摘要、可對話、可複習的學習流程。
           </p>
         </div>
 

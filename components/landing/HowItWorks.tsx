@@ -1,5 +1,5 @@
 const STEPS = [
-  { title: "上傳 PDF", detail: "把講義、報告或研究文件放到 DocMate。" },
+  { title: "上傳 PDF", detail: "把講義、報告或研究文件放到 Nova AI Doc。" },
   { title: "AI 整理重點", detail: "自動產生摘要、筆記與可複習考題。" },
   { title: "對話與複習", detail: "隨時針對文件提問，把知識真正學會。" },
 ] as const;

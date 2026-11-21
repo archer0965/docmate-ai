@@ -27,7 +27,7 @@ export async function parsePdfPages(buffer: ArrayBuffer): Promise<PdfPageText[]>
     return pages;
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error("[DocMate] pdf parse failed", error);
+    console.error("[Nova AI Doc] pdf parse failed", error);
     throw new AppError(
       "pdf_parse_failed",
       "PDF 解析失敗。請確認檔案未加密，且為可選取文字的 PDF。",

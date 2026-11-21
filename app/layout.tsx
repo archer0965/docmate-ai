@@ -17,9 +17,10 @@ const sora = Sora({
 });
 
 export const metadata: Metadata = {
-  title: "DocMate AI｜AI 文件智慧助理",
+  metadataBase: new URL("https://docmate-ai-one.vercel.app"),
+  title: "Nova AI Doc｜AI 文件智慧助理",
   description:
-    "DocMate AI 幫你上傳 PDF、產生摘要、文件問答、考題與筆記整理。適合學生與知識工作者。",
+    "Nova AI Doc 幫你上傳 PDF、產生摘要、文件問答與知識整理。拓新雲端 NovaOS 子品牌。",
 };
 
 export default function RootLayout({

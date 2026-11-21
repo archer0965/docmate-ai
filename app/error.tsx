@@ -11,7 +11,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[DocMate] page error", error);
+    console.error("[Nova AI Doc] page error", error);
   }, [error]);
 
   return (

@@ -83,7 +83,7 @@ export async function processPdfUpload(options: {
     });
 
   if (uploadError) {
-    console.error("[DocMate] storage upload failed", uploadError);
+    console.error("[Nova AI Doc] storage upload failed", uploadError);
     // 儲存失敗：退回額度（尚未呼叫 AI）
     await releaseDocumentSlot(userId);
     throw new AppError("storage_error", "上傳到雲端儲存失敗，請稍後再試。", 500);

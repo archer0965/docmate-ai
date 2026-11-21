@@ -15,7 +15,7 @@ export async function summarizeDocument(pages: PdfPageText[]): Promise<string> {
     .join("\n\n")
     .slice(0, 40000);
 
-  const prompt = `你是 DocMate AI 文件助理。請根據下列 PDF 內容，用「繁體中文（台灣）」撰寫摘要。
+  const prompt = `你是 Nova AI Doc 文件助理。請根據下列 PDF 內容，用「繁體中文（台灣）」撰寫摘要。
 
 要求：
 1. 先給 3～6 點重點條列
@@ -35,7 +35,7 @@ ${sample}`;
     return text;
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error("[DocMate] gemini summarize failed", error);
+    console.error("[Nova AI Doc] gemini summarize failed", error);
     throw new AppError("ai_error", "AI 摘要服務暫時無法使用，請稍後再試。", 502);
   }
 }

@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { ResetPasswordForm } from "./ResetPasswordForm";
 
-export const metadata = { title: "重設密碼｜DocMate AI" };
+export const metadata = { title: "重設密碼｜Nova AI Doc" };
 
 export default function ResetPasswordPage() {
   return (

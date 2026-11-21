@@ -66,7 +66,7 @@ export async function createTestCheckoutOrder(userId: string, targetPlan: string
     .single();
 
   if (error || !order) {
-    console.error("[DocMate] create order failed", error);
+    console.error("[Nova AI Doc] create order failed", error);
     throw new AppError("internal_error", "無法建立付款訂單。", 500);
   }
 
@@ -174,7 +174,7 @@ export async function confirmTestPayment(options: {
   );
 
   if (subError) {
-    console.error("[DocMate] subscription upsert failed", subError);
+    console.error("[Nova AI Doc] subscription upsert failed", subError);
     throw new AppError("internal_error", "更新訂閱紀錄失敗。", 500);
   }
 

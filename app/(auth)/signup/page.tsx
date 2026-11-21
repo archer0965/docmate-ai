@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 type SearchParams = Promise<Record<string, string | string[] | undefined>> | Record<string, string | string[] | undefined>;
 
 /**
- * Dedicated signup entry — DocMate auth UI lives on /login with mode toggle.
+ * Dedicated signup entry — Nova AI Doc auth UI lives on /login with mode toggle.
  * Keep /signup so hub CTAs and bookmarks do not 404.
  */
 export default async function SignupPage({

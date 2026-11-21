@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { ForgotPasswordForm } from "./ForgotPasswordForm";
 
-export const metadata = { title: "忘記密碼｜DocMate AI" };
+export const metadata = { title: "忘記密碼｜Nova AI Doc" };
 
 export default function ForgotPasswordPage() {
   return (
