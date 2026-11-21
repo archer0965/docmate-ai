@@ -42,7 +42,7 @@ export function BillingManager({
   const [error, setError] = useState<string | null>(null);
 
   async function cancelPlan() {
-    if (!confirm("確定要取消付費方案並立刻降回免費版？（測試模式）")) return;
+    if (!confirm("確定要取消付費方案並立刻降回免費版？")) return;
     setLoading(true);
     setError(null);
     setMessage(null);
@@ -119,7 +119,7 @@ export function BillingManager({
               disabled={loading}
               className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
             >
-              {loading ? "處理中…" : "取消訂閱（測試）"}
+              {loading ? "處理中…" : "取消訂閱"}
             </button>
           )}
         </div>

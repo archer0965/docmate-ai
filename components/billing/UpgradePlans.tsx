@@ -1,8 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { PlanId } from "@/lib/plans";
+import { getNovaOsUpgradeUrl } from "@/lib/novaos-hub";
 
 type PlanCard = {
   id: PlanId;
@@ -11,6 +11,10 @@ type PlanCard = {
   documentsPerMonth: number;
   questionsPerMonth: number;
   maxUploadMb: number;
+  blurb: string;
+  isPopular?: boolean;
+  popularBadge?: string;
+  features: string[];
 };
 
 export function UpgradePlans({
@@ -20,30 +24,13 @@ export function UpgradePlans({
   currentPlan: PlanId;
   plans: PlanCard[];
 }) {
-  const router = useRouter();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
-  async function startCheckout(planId: PlanId) {
+  function goToEcpay(planId: PlanId) {
     if (planId === "free") return;
     setLoadingPlan(planId);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/billing/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: planId }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json?.error?.message || "無法建立訂單");
-      }
-      router.push(json.checkoutPath);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "建立訂單失敗");
-      setLoadingPlan(null);
-    }
+    // 統一導向拓新雲端主站綠界結帳（同一 Supabase 帳號）
+    window.location.href = getNovaOsUpgradeUrl();
   }
 
   return (
@@ -57,12 +44,22 @@ export function UpgradePlans({
             <article
               key={plan.id}
               className={`rounded-2xl border p-5 ${
-                plan.id === "pro"
+                plan.isPopular
                   ? "border-brand-300 bg-gradient-to-b from-brand-50 to-white shadow-soft"
                   : "border-brand-100 bg-white"
               }`}
             >
-              <h3 className="font-display text-xl font-semibold text-slate-900">{plan.name}</h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="font-display text-xl font-semibold text-slate-900">
+                  {plan.name}
+                </h3>
+                {plan.isPopular ? (
+                  <span className="rounded-md bg-brand-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+                    {plan.popularBadge || "主推方案"}
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-1 text-sm text-slate-500">{plan.blurb}</p>
               <p className="mt-3 font-display text-3xl font-bold text-slate-900">
                 {plan.priceTwd === 0 ? "免費" : `NT$${plan.priceTwd}`}
                 {plan.priceTwd > 0 && (
@@ -70,8 +67,9 @@ export function UpgradePlans({
                 )}
               </p>
               <ul className="mt-4 space-y-2 text-sm text-slate-600">
-                <li>每月 {plan.documentsPerMonth} 份文件</li>
-                <li>每月 {plan.questionsPerMonth} 次提問</li>
+                {plan.features.map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
                 <li>單檔上限 {plan.maxUploadMb}MB</li>
               </ul>
 
@@ -83,10 +81,10 @@ export function UpgradePlans({
                 <button
                   type="button"
                   disabled={!!loadingPlan}
-                  onClick={() => startCheckout(plan.id)}
+                  onClick={() => goToEcpay(plan.id)}
                   className="mt-6 w-full rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
                 >
-                  {loadingPlan === plan.id ? "建立訂單中…" : "測試升級"}
+                  {loadingPlan === plan.id ? "導向綠界…" : "綠界付款升級"}
                 </button>
               ) : (
                 <p className="mt-6 rounded-xl border border-dashed border-brand-200 px-3 py-2 text-center text-sm text-slate-500">
@@ -98,9 +96,10 @@ export function UpgradePlans({
         })}
       </div>
 
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
       <p className="mt-4 text-xs text-slate-500">
-        目前為測試金流：不會真正扣款。付款成功後由伺服器驗證並更新方案，前端無法自行改等級。
+        付費升級統一走拓新雲端主站綠界 ECPay
+        結帳；登入同一組 Email 後選擇 AI
+        文件助理方案即可完成付款。早鳥／一般／大使折扣與全站規則相同。
       </p>
     </div>
   );

@@ -11,7 +11,7 @@ AI 文件智慧助理（繁體中文）。技術：Next.js App Router、Supabase
 - [x] Gemini 繁中摘要
 - [x] 文件問答（含來源頁碼與對話紀錄）
 - [x] 額度檢查（未登入 / 檔案過大 / 額度不足等錯誤處理）
-- [x] 會員方案、升級頁、訂閱管理、測試金流（伺服器驗證後更新方案）
+- [x] 會員方案、升級頁、訂閱管理（付費升級統一綠界 ECPay／拓新雲端主站）
 - [x] 上線前安全硬化（RLS、額度預扣、PDF 驗證、rate limit、Vercel 設定）
 
 ## 快速開始
@@ -73,11 +73,11 @@ npm run dev
    - 空白／純掃描 PDF → 422
    - 超過 FREE 每月 3 份 → 429
 
-## 測試會員升級
+## 會員升級（綠界）
 
 1. 登入後開啟 `/dashboard/upgrade`
-2. 選擇 Pro 或 Business → 進入測試結帳頁
-3. 按「模擬付款成功」→ 到 `/dashboard/billing` 確認方案已更新
+2. 選擇專業版或商業版 → 導向拓新雲端主站綠界 ECPay 結帳
+3. 付款成功後由主站回調更新 `docmate_profiles.plan`
 4. 超過額度時上傳／提問會被 API 拒絕（429）
 
 ## 永久公開網址（Vercel）
@@ -96,7 +96,7 @@ Cursor Apps `publish-app` 在此環境不可用時，以 Vercel 作為固定公�
 | `SUPABASE_SERVICE_ROLE_KEY` | 僅伺服器端 |
 | `GEMINI_API_KEY` | 僅伺服器端 |
 | `GEMINI_MODEL` | 可選，預設 `gemini-2.0-flash` |
-| `BILLING_TEST_SECRET` | 測試金流 HMAC 密鑰 |
+| `NEXT_PUBLIC_NOVAOS_URL` | 可選，拓新雲端主站（預設 https://paycheck.com.de） |
 
 4. Supabase Auth → Redirect URLs 加上：
    `https://docmate-ai.vercel.app/auth/callback`
@@ -106,7 +106,6 @@ Cursor Apps `publish-app` 在此環境不可用時，以 Vercel 作為固定公�
 
 ## 重要安全規則
 
-1. `GEMINI_API_KEY`、`SUPABASE_SERVICE_ROLE_KEY`、`BILLING_TEST_SECRET` 不可出現在前端
+1. `GEMINI_API_KEY`、`SUPABASE_SERVICE_ROLE_KEY` 不可出現在前端
 2. 所有文件／對話都用 `user_id = auth.uid()` 的 RLS 隔離
-3. 會員 `plan`、使用次數、付款狀態只能由伺服器 service role 更新
-4. 測試結帳必須通過 HMAC 簽章驗證，前端不能直接改方案
+3. 會員 `plan`、使用次數、付款狀態只能由伺服器／綠界回調更新，前端不能直接改方案

@@ -1,37 +1,48 @@
-import { requireUser } from "@/lib/auth/require-user";
-import { createTestCheckoutOrder } from "@/lib/billing/orders";
-import { AppError, jsonError } from "@/lib/errors";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { getNovaOsUpgradeUrl } from "@/lib/novaos-hub";
+import { createClient } from "@/lib/supabase/server";
 
 const bodySchema = z.object({
   plan: z.enum(["pro", "business"]),
 });
 
 /**
- * 建立測試結帳訂單
- * 金額與方案以伺服器 PLANS 為準
+ * 付費升級統一導向拓新雲端主站綠界 ECPay（同一 Auth 帳號）
  */
 export async function POST(request: Request) {
   try {
-    const { user } = await requireUser();
-    const json = await request.json().catch(() => null);
-    const parsed = bodySchema.safeParse(json);
-
-    if (!parsed.success) {
-      throw new AppError("validation_error", "請選擇 Pro 或 Business 方案。", 400);
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: { message: "請先登入" } },
+        { status: 401 }
+      );
     }
 
-    const { order, token } = await createTestCheckoutOrder(user.id, parsed.data.plan);
+    const json = await request.json().catch(() => ({}));
+    const parsed = bodySchema.safeParse(json);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: { message: "請選擇有效方案" } },
+        { status: 400 }
+      );
+    }
 
     return NextResponse.json({
-      orderId: order.id,
-      amountTwd: order.amount_twd,
-      targetPlan: order.target_plan,
-      checkoutPath: `/dashboard/billing/checkout/${order.id}?token=${token}`,
-      mode: "test",
+      checkoutUrl: getNovaOsUpgradeUrl(),
+      catalog: "ai_doc",
+      plan: parsed.data.plan,
+      gateway: "ecpay",
     });
   } catch (error) {
-    return jsonError(error);
+    console.error("[billing/checkout]", error);
+    return NextResponse.json(
+      { error: { message: "無法建立結帳" } },
+      { status: 500 }
+    );
   }
 }

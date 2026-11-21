@@ -40,13 +40,14 @@ export default async function BillingPage({
           </Link>
           <h1 className="mt-3 font-display text-3xl font-bold text-slate-900">訂閱管理</h1>
           <p className="mt-2 text-sm text-slate-600">
-            查看方案、本月額度與測試付款紀錄。每月用量會依台北時區自動重置。
+            查看方案、本月額度與付款紀錄。付費升級統一走綠界
+            ECPay；每月用量依台北時區自動重置。
           </p>
         </div>
 
         {params.upgraded === "1" && (
           <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            測試付款成功，會員方案已更新為 {plan.name}。
+            付款成功，會員方案已更新為 {plan.name}。
           </p>
         )}
 

@@ -34,6 +34,10 @@ export default async function UpgradePage({
     documentsPerMonth: plan.documentsPerMonth,
     questionsPerMonth: plan.questionsPerMonth,
     maxUploadMb: Math.floor(plan.maxUploadBytes / (1024 * 1024)),
+    blurb: plan.blurb,
+    isPopular: plan.isPopular,
+    popularBadge: plan.popularBadge,
+    features: plan.features,
   }));
 
   return (
@@ -45,13 +49,14 @@ export default async function UpgradePage({
           </Link>
           <h1 className="mt-3 font-display text-3xl font-bold text-slate-900">升級方案</h1>
           <p className="mt-2 text-sm text-slate-600">
-            選擇適合的方案。測試金流不會真正扣款；權限只在伺服器驗證付款後更新。
+            FREE／專業版 NT$199／商業版 NT$499。付費升級統一導向拓新雲端綠界
+            ECPay，折扣規則與全站相同。
           </p>
         </div>
 
         {params.failed === "1" && (
           <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            測試付款未成功，方案未變更。
+            付款未完成，方案未變更。請重新選擇方案並完成綠界結帳。
           </p>
         )}
 
