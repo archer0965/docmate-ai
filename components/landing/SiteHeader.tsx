@@ -34,7 +34,7 @@ export function SiteHeader() {
           <ButtonLink href="/login" variant="ghost" className="hidden sm:inline-flex">
             登入
           </ButtonLink>
-          <ButtonLink href="/login">開始使用</ButtonLink>
+          <ButtonLink href="/signup">開始使用</ButtonLink>
         </div>
       </div>
     </header>

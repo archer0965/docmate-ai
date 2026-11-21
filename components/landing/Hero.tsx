@@ -37,7 +37,7 @@ export function Hero() {
           </p>
 
           <div className="animate-fade-up animation-delay-300 mt-8 flex flex-wrap items-center gap-3">
-            <ButtonLink href="/login" className="px-6 py-3 text-base">
+            <ButtonLink href="/signup" className="px-6 py-3 text-base">
               免費開始
             </ButtonLink>
             <ButtonLink href="#features" variant="secondary" className="px-6 py-3 text-base">

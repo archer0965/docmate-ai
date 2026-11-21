@@ -64,7 +64,7 @@ export function PricingTeaser() {
         </div>
 
         <div className="mt-10 flex flex-wrap gap-3">
-          <ButtonLink href="/login" className="px-6 py-3 text-base">
+          <ButtonLink href="/signup" className="px-6 py-3 text-base">
             免費體驗
           </ButtonLink>
           <ButtonLink
