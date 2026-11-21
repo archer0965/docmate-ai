@@ -14,6 +14,7 @@
    - `003_billing_subscriptions.sql`
    - `004_launch_hardening.sql`
 3. Supabase Auth 設定 Site URL / Redirect URLs（含正式網域 `/auth/callback`）
+4. 永久公開網址：在 Vercel 匯入本 repo（project name `docmate-ai`）→ `https://docmate-ai.vercel.app`（細節見 README「永久公開網址」）
 
 ## 檢查結果對照
 

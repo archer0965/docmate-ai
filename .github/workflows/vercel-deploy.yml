@@ -1,0 +1,50 @@
+# Optional: deploy to Vercel via GitHub Actions after you connect the project.
+# Preferred path (no Action needed): import the repo in the Vercel dashboard —
+# Git pushes to main then get a stable production URL automatically.
+#
+# One-time setup if you prefer this workflow:
+# 1. Create a Vercel project named "docmate-ai" linked to this repo.
+# 2. In GitHub → Settings → Secrets and variables → Actions, add:
+#    VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
+# 3. In the Vercel project → Settings → Environment Variables, set the app secrets
+#    listed in README (GEMINI_API_KEY, SUPABASE_*, BILLING_TEST_SECRET, etc.).
+
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel env
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

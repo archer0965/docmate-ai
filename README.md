@@ -80,6 +80,30 @@ npm run dev
 3. 按「模擬付款成功」→ 到 `/dashboard/billing` 確認方案已更新
 4. 超過額度時上傳／提問會被 API 拒絕（429）
 
+## 永久公開網址（Vercel）
+
+Cursor Apps `publish-app` 在此環境不可用時，以 Vercel 作為固定公開 URL（更新後網址不變）：
+
+1. 開啟 [Vercel → Add New Project](https://vercel.com/new)，匯入 `https://github.com/archer0965/docmate-ai`（branch：`main`）。
+2. Project Name 請用 **`docmate-ai`**，生產網址即為：
+   **https://docmate-ai.vercel.app**
+3. 在 Vercel → Project → Settings → Environment Variables 設定（Production + Preview）：
+
+| 變數 | 說明 |
+|------|------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase Project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | 僅伺服器端 |
+| `GEMINI_API_KEY` | 僅伺服器端 |
+| `GEMINI_MODEL` | 可選，預設 `gemini-2.0-flash` |
+| `BILLING_TEST_SECRET` | 測試金流 HMAC 密鑰 |
+
+4. Supabase Auth → Redirect URLs 加上：
+   `https://docmate-ai.vercel.app/auth/callback`
+5. Deploy。之後每次 push `main` 會自動重新部署，公開網址不變。
+
+可選：若要用 GitHub Actions 部署，見 `.github/workflows/vercel-deploy.yml`，並在 repo Secrets 設定 `VERCEL_TOKEN`、`VERCEL_ORG_ID`、`VERCEL_PROJECT_ID`。
+
 ## 重要安全規則
 
 1. `GEMINI_API_KEY`、`SUPABASE_SERVICE_ROLE_KEY`、`BILLING_TEST_SECRET` 不可出現在前端
