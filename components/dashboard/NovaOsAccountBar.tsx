@@ -85,10 +85,26 @@ export function NovaOsAccountBar({ email }: { email?: string | null }) {
         {menuOpen ? (
           <div className="absolute right-0 z-50 mt-2 w-52 rounded-2xl border border-brand-100 bg-white p-2 shadow-xl">
             <a
+              href="/dashboard"
+              className="block rounded-xl px-3 py-2 text-sm font-medium text-brand-800 hover:bg-brand-50"
+              onClick={() => setMenuOpen(false)}
+            >
+              前往功能工作台
+            </a>
+            <a
+              href={`${NOVAOS_HUB_URL}/admin/aidoc`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block rounded-xl px-3 py-2 text-sm font-medium text-indigo-800 hover:bg-indigo-50"
+              onClick={() => setMenuOpen(false)}
+            >
+              進入管理後台
+            </a>
+            <a
               href={`${NOVAOS_HUB_URL}/dashboard`}
               target="_blank"
               rel="noopener noreferrer"
-              className="block rounded-xl px-3 py-2 text-sm font-medium text-brand-800 hover:bg-brand-50"
+              className="block rounded-xl px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
               onClick={() => setMenuOpen(false)}
             >
               前往 NovaOS 主站中控
