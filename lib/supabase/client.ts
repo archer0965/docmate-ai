@@ -13,5 +13,11 @@ export function createClient() {
     throw new Error("網站尚未完成 Supabase 設定，請聯絡管理員。");
   }
 
-  return createBrowserClient(url, anonKey);
+  return createBrowserClient(url, anonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
 }

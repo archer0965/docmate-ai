@@ -1,19 +1,16 @@
 import { redirect } from "next/navigation";
+import { hubAuthRedirect } from "@/lib/hub-auth";
 
-type SearchParams = Promise<Record<string, string | string[] | undefined>> | Record<string, string | string[] | undefined>;
+export const metadata = { title: "註冊" };
 
-/**
- * Dedicated signup entry — Nova AI Doc auth UI lives on /login with mode toggle.
- * Keep /signup so hub CTAs and bookmarks do not 404.
- */
+type Sp = { next?: string };
+
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams?: SearchParams;
+  searchParams: Promise<Sp>;
 }) {
-  const raw = searchParams ? await Promise.resolve(searchParams) : {};
-  const next = typeof raw.next === "string" ? raw.next : undefined;
-  const params = new URLSearchParams({ mode: "signup" });
-  if (next) params.set("next", next);
-  redirect(`/login?${params.toString()}`);
+  const sp = await searchParams;
+  const next = sp.next && sp.next.startsWith("/") ? sp.next : "/dashboard";
+  redirect(hubAuthRedirect("signup", next));
 }
