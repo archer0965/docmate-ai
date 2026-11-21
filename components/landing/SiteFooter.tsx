@@ -9,13 +9,22 @@ export function SiteFooter() {
           <p className="font-display text-base font-semibold text-slate-900">{SITE_NAME}</p>
           <p className="mt-1 text-sm text-slate-500">AI 文件智慧助理 · 繁體中文</p>
         </div>
-        <div className="flex gap-5 text-sm text-slate-600">
+        <div className="flex flex-wrap gap-5 text-sm text-slate-600">
           <Link href="/login" className="hover:text-brand-700">
             登入
           </Link>
           <a href="#features" className="hover:text-brand-700">
             功能
           </a>
+          <Link href="/terms" className="hover:text-brand-700">
+            服務條款
+          </Link>
+          <Link href="/privacy" className="hover:text-brand-700">
+            隱私權
+          </Link>
+          <Link href="/legal" className="hover:text-brand-700">
+            法律資訊
+          </Link>
         </div>
       </div>
     </footer>
