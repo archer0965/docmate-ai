@@ -13,6 +13,7 @@ export type DocumentRecord = {
   status: DocumentStatus;
   error_message: string | null;
   summary: string | null;
+  folder?: string | null;
   created_at: string;
   updated_at: string;
 };

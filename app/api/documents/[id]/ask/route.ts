@@ -7,6 +7,7 @@ import { assertRateLimit, pruneRateLimitBuckets } from "@/lib/security/rate-limi
 import {
   assertCanAsk,
   getFreshProfile,
+  releaseQuestionSlot,
   reserveQuestionSlot,
 } from "@/lib/usage/quota";
 import { NextResponse } from "next/server";
@@ -19,9 +20,13 @@ type Params = { params: Promise<{ id: string }> };
 
 /** POST：依文件內容問答，並保存紀錄與來源頁碼 */
 export async function POST(request: Request, { params }: Params) {
+  let reserved = false;
+  let userId: string | null = null;
+
   try {
     const { id } = await params;
     const { user, supabase } = await requireUser();
+    userId = user.id;
     pruneRateLimitBuckets();
 
     const profile = await getFreshProfile(supabase, user.id);
@@ -55,6 +60,7 @@ export async function POST(request: Request, { params }: Params) {
       );
     }
 
+    // Document isolation: always filter by user_id (RLS also enforces auth.uid() = user_id)
     const { data: document, error: docError } = await supabase
       .from("documents")
       .select("id, status")
@@ -93,8 +99,9 @@ export async function POST(request: Request, { params }: Params) {
 
     const question = parsed.data.question;
 
-    // 呼叫 AI 前預扣額度（失敗也不退，避免刷 API）
+    // 預扣額度；AI 或保存失敗時退回（見下方 catch）
     await reserveQuestionSlot(user.id, plan.questionsPerMonth);
+    reserved = true;
 
     const { error: userMsgError } = await supabase.from("chat_messages").insert({
       document_id: id,
@@ -140,6 +147,9 @@ export async function POST(request: Request, { params }: Params) {
       message: assistantMsg,
     });
   } catch (error) {
+    if (reserved && userId) {
+      await releaseQuestionSlot(userId);
+    }
     return jsonError(error);
   }
 }

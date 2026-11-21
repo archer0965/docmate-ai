@@ -33,7 +33,11 @@ export async function GET(_request: Request, { params }: Params) {
   }
 }
 
-/** DELETE：刪除文件、分段、問答與 Storage 檔案 */
+/**
+ * DELETE：刪除文件、分段、問答與 Storage 檔案。
+ * Document isolation: always scope by user_id; RLS also enforces auth.uid() = user_id
+ * so other members cannot delete or read another user's documents.
+ */
 export async function DELETE(_request: Request, { params }: Params) {
   try {
     const { id } = await params;

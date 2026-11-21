@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 
 export type ChatMessage = {
   id: string;
@@ -21,9 +21,16 @@ export function AskPanel({
 }) {
   const [messages, setMessages] = useState(initialMessages);
   const [question, setQuestion] = useState("");
+  const [historyQuery, setHistoryQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [remaining, setRemaining] = useState(questionsRemaining);
+
+  const filteredMessages = useMemo(() => {
+    const q = historyQuery.trim().toLowerCase();
+    if (!q) return messages;
+    return messages.filter((m) => m.content.toLowerCase().includes(q));
+  }, [messages, historyQuery]);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -66,7 +73,6 @@ export function AskPanel({
       setRemaining((n) => Math.max(n - 1, 0));
     } catch (err) {
       setError(err instanceof Error ? err.message : "提問失敗");
-      // 失敗時拿掉 optimistic 使用者訊息
       setMessages((prev) => prev.filter((m) => m.id !== optimisticUser.id));
       setQuestion(asked);
     } finally {
@@ -81,11 +87,28 @@ export function AskPanel({
         <p className="text-xs text-slate-500">本月剩餘提問：{remaining}</p>
       </div>
 
+      <div className="mt-3">
+        <label className="sr-only" htmlFor="history-search">
+          搜尋對話紀錄
+        </label>
+        <input
+          id="history-search"
+          value={historyQuery}
+          onChange={(e) => setHistoryQuery(e.target.value)}
+          placeholder="搜尋對話紀錄…"
+          className="w-full rounded-xl border border-brand-200 px-3 py-2 text-sm outline-none ring-brand-500 focus:ring-2"
+        />
+      </div>
+
       <div className="mt-4 max-h-[420px] space-y-3 overflow-y-auto rounded-xl bg-slate-50 p-3">
-        {messages.length === 0 && (
-          <p className="text-sm text-slate-500">還沒有對話。試著問：「這份文件的重點是什麼？」</p>
+        {filteredMessages.length === 0 && (
+          <p className="text-sm text-slate-500">
+            {messages.length === 0
+              ? "還沒有對話。試著問：「這份文件的重點是什麼？」"
+              : "沒有符合搜尋的對話。"}
+          </p>
         )}
-        {messages.map((message) => (
+        {filteredMessages.map((message) => (
           <div
             key={message.id}
             className={`rounded-xl px-3 py-2 text-sm leading-relaxed ${
@@ -95,9 +118,12 @@ export function AskPanel({
             }`}
           >
             <p className="whitespace-pre-wrap">{message.content}</p>
-            {message.role === "assistant" && message.source_pages?.length > 0 && (
+            {message.role === "assistant" && (
               <p className="mt-2 text-xs text-brand-700">
-                來源頁碼：{message.source_pages.join("、")}
+                來源頁碼：
+                {message.source_pages?.length > 0
+                  ? message.source_pages.join("、")
+                  : "（無頁碼引用）"}
               </p>
             )}
           </div>

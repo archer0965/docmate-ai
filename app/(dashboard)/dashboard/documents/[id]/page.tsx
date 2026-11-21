@@ -28,15 +28,27 @@ export default async function DocumentDetailPage({ params }: Props) {
   const profile = await getFreshProfile(supabase, user.id);
   const plan = getPlan(profile.plan);
 
-  const { data: document } = await supabase
+  let documentResult = await supabase
     .from("documents")
     .select(
-      "id, title, file_name, file_size, page_count, status, error_message, summary, created_at",
+      "id, title, file_name, file_size, page_count, status, error_message, summary, folder, created_at",
     )
     .eq("id", id)
     .eq("user_id", user.id)
     .maybeSingle();
 
+  if (documentResult.error && /folder/i.test(documentResult.error.message || "")) {
+    documentResult = await supabase
+      .from("documents")
+      .select(
+        "id, title, file_name, file_size, page_count, status, error_message, summary, created_at",
+      )
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+  }
+
+  const document = documentResult.data;
   if (!document) {
     notFound();
   }
@@ -61,11 +73,24 @@ export default async function DocumentDetailPage({ params }: Props) {
           <p className="mt-2 text-sm text-slate-500">
             {document.file_name}
             {document.page_count ? ` · ${document.page_count} 頁` : ""} · 狀態：{document.status}
+            {"folder" in document && document.folder
+              ? ` · 資料夾：${document.folder}`
+              : ""}
           </p>
         </div>
 
         <section className="rounded-2xl border border-brand-100 bg-white p-5 sm:p-6">
-          <h2 className="font-display text-xl font-semibold text-slate-900">AI 摘要</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-display text-xl font-semibold text-slate-900">AI 摘要</h2>
+            {document.summary ? (
+              <a
+                href={`/api/documents/${document.id}/export`}
+                className="rounded-lg border border-brand-200 px-3 py-1.5 text-xs font-semibold text-brand-800 hover:bg-brand-50"
+              >
+                匯出摘要（.md）
+              </a>
+            ) : null}
+          </div>
           {document.status === "failed" ? (
             <p className="mt-3 text-sm text-red-600">{document.error_message}</p>
           ) : document.summary ? (
