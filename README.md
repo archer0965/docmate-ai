@@ -11,7 +11,7 @@ AI 文件智慧助理（繁體中文）。技術：Next.js App Router、Supabase
 - [x] Gemini 繁中摘要
 - [x] 文件問答（含來源頁碼與對話紀錄）
 - [x] 額度檢查（未登入 / 檔案過大 / 額度不足等錯誤處理）
-- [ ] 會員升級與金流測試頁（下一階段）
+- [x] 會員方案、升級頁、訂閱管理、測試金流（伺服器驗證後更新方案）
 - [ ] Vercel 正式部署檢查
 
 ## 快速開始
@@ -42,6 +42,7 @@ cp .env.example .env.local
 
 1. `supabase/migrations/001_init_docmate.sql`
 2. `supabase/migrations/002_lock_profile_quota.sql`（若 001 已含鎖定政策可略過）
+3. `supabase/migrations/003_billing_subscriptions.sql`
 
 ### 4. 啟用登入
 
@@ -71,8 +72,16 @@ npm run dev
    - 空白／純掃描 PDF → 422
    - 超過 FREE 每月 3 份 → 429
 
+## 測試會員升級
+
+1. 登入後開啟 `/dashboard/upgrade`
+2. 選擇 Pro 或 Business → 進入測試結帳頁
+3. 按「模擬付款成功」→ 到 `/dashboard/billing` 確認方案已更新
+4. 超過額度時上傳／提問會被 API 拒絕（429）
+
 ## 重要安全規則
 
-1. `GEMINI_API_KEY`、`SUPABASE_SERVICE_ROLE_KEY` 不可出現在前端
+1. `GEMINI_API_KEY`、`SUPABASE_SERVICE_ROLE_KEY`、`BILLING_TEST_SECRET` 不可出現在前端
 2. 所有文件／對話都用 `user_id = auth.uid()` 的 RLS 隔離
-3. 會員 `plan` 與使用次數只能由伺服器 service role 更新
+3. 會員 `plan`、使用次數、付款狀態只能由伺服器 service role 更新
+4. 測試結帳必須通過 HMAC 簽章驗證，前端不能直接改方案

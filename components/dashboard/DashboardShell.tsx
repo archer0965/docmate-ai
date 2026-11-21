@@ -12,18 +12,24 @@ export function DashboardShell({
     <div className="min-h-[100svh] bg-gradient-to-b from-brand-50/80 to-white">
       <header className="border-b border-brand-100 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 sm:gap-6">
             <Link href="/dashboard" className="font-display text-lg font-semibold text-slate-900">
               {SITE_NAME}
             </Link>
-            <nav className="hidden gap-4 text-sm text-slate-600 sm:flex">
+            <nav className="flex gap-3 text-sm text-slate-600 sm:gap-4">
               <Link href="/dashboard" className="hover:text-brand-700">
-                我的文件
+                文件
+              </Link>
+              <Link href="/dashboard/upgrade" className="hover:text-brand-700">
+                升級
+              </Link>
+              <Link href="/dashboard/billing" className="hover:text-brand-700">
+                訂閱
               </Link>
             </nav>
           </div>
           <div className="flex items-center gap-3 text-sm text-slate-600">
-            <span className="hidden max-w-[180px] truncate sm:inline">{email}</span>
+            <span className="hidden max-w-[160px] truncate sm:inline">{email}</span>
             <form action="/auth/signout" method="post">
               <button
                 type="submit"

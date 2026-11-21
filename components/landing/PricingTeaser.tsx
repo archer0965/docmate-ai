@@ -1,4 +1,5 @@
 import { ButtonLink } from "@/components/ui/ButtonLink";
+import { PLANS } from "@/lib/plans";
 
 export function PricingTeaser() {
   return (
@@ -9,7 +10,8 @@ export function PricingTeaser() {
             免費開始，需要時再升級
           </h2>
           <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
-            免費版可體驗核心功能；付費版將提供更高上傳額度與進階 AI 能力（下一階段實作）。
+            FREE 每月 {PLANS.free.documentsPerMonth} 份文件／{PLANS.free.questionsPerMonth} 次提問；
+            PRO NT${PLANS.pro.priceTwd}；Business NT${PLANS.business.priceTwd}。
           </p>
         </div>
 
@@ -17,8 +19,8 @@ export function PricingTeaser() {
           <ButtonLink href="/login" className="px-6 py-3 text-base">
             建立免費帳號
           </ButtonLink>
-          <ButtonLink href="/login" variant="secondary" className="px-6 py-3 text-base">
-            查看登入頁（即將完成）
+          <ButtonLink href="/login?next=/dashboard/upgrade" variant="secondary" className="px-6 py-3 text-base">
+            查看方案
           </ButtonLink>
         </div>
       </div>

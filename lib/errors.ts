@@ -12,6 +12,7 @@ export type ErrorCode =
   | "quota_exceeded"
   | "ai_error"
   | "storage_error"
+  | "conflict"
   | "internal_error";
 
 export class AppError extends Error {
