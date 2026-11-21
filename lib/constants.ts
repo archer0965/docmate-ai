@@ -9,7 +9,8 @@ export const SITE_NAME = "Nova AI Doc";
 /** Production URL on Vercel. */
 export const SITE_URL = "https://docmate-ai-one.vercel.app";
 
-export const SITE_TAGLINE = "把長文件變成可讀、可問、可複習的知識";
+export const SITE_TAGLINE =
+  "您的智慧文件助理，極速提煉長文本精華——摘要、深度問答與智慧考題筆記";
 
 export const NAV_LINKS = [
   { href: "#features", label: "功能" },

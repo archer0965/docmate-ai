@@ -1,4 +1,4 @@
-import { SITE_NAME, SITE_TAGLINE } from "@/lib/constants";
+import { SITE_NAME } from "@/lib/constants";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 
 /**
@@ -26,14 +26,14 @@ export function Hero() {
           </p>
 
           <h1 className="animate-fade-up animation-delay-100 mt-4 font-display text-4xl font-bold leading-[1.15] tracking-tight text-slate-900 sm:text-5xl lg:text-[3.4rem]">
-            上傳 PDF，立刻獲得
+            您的智慧文件助理
             <span className="mt-1 block text-brand-700 sm:mt-0">
-              摘要、問答與複習考題
+              極速提煉長文本精華
             </span>
           </h1>
 
           <p className="animate-fade-up animation-delay-200 mt-5 max-w-md text-base leading-relaxed text-slate-600 sm:text-lg">
-            {SITE_TAGLINE}。專為學生與知識工作者設計，讓文件不再只是靜態檔案。
+            上傳 PDF／文件即可秒級生成重點摘要、深度問答與智慧考題筆記，大幅提升閱讀與工作效率。
           </p>
 
           <div className="animate-fade-up animation-delay-300 mt-8 flex flex-wrap items-center gap-3">

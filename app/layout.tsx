@@ -16,14 +16,18 @@ const sora = Sora({
   display: "swap",
 });
 
-const siteTitle = "Nova AI Doc｜AI 文件智慧助理";
+const siteTitle = "Nova AI Doc｜您的智慧文件助理，極速提煉長文本精華";
 const siteDescription =
-  "Nova AI Doc 幫你上傳 PDF、產生摘要、文件問答與知識整理。拓新雲端 NovaOS 子品牌。";
+  "上傳 PDF／文件即可秒級生成重點摘要、深度問答與智慧考題筆記，大幅提升閱讀與工作效率。拓新雲端 NovaOS 子品牌。";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://docmate-ai-one.vercel.app"),
-  title: siteTitle,
+  title: {
+    default: siteTitle,
+    template: "%s｜Nova AI Doc",
+  },
   description: siteDescription,
+  applicationName: "Nova AI Doc",
   openGraph: {
     type: "website",
     locale: "zh_TW",
@@ -36,7 +40,7 @@ export const metadata: Metadata = {
         url: "/og-image.jpg?v=20261122-og",
         width: 2848,
         height: 1504,
-        alt: "Nova AI Doc｜智慧文件助理",
+        alt: "Nova AI Doc｜您的智慧文件助理，極速提煉長文本精華",
       },
     ],
   },
