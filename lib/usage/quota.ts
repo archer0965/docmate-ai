@@ -21,7 +21,7 @@ export async function getFreshProfile(
   userId: string,
 ): Promise<ProfileRow> {
   const { data, error } = await supabase
-    .from("profiles")
+    .from("docmate_profiles")
     .select("id, email, display_name, plan, documents_used, questions_used, usage_period")
     .eq("id", userId)
     .maybeSingle();
@@ -31,14 +31,36 @@ export async function getFreshProfile(
   }
 
   if (!data) {
-    throw new AppError("unauthorized", "找不到會員資料，請重新登入。", 401);
+    // Shared NovaOS auth users may predate docmate_profiles — create on first use
+    const admin = createAdminClient();
+    const period = currentUsagePeriod();
+    const { data: created, error: createError } = await admin
+      .from("docmate_profiles")
+      .upsert(
+        {
+          id: userId,
+          usage_period: period,
+          plan: "free",
+          documents_used: 0,
+          questions_used: 0,
+        },
+        { onConflict: "id" },
+      )
+      .select("id, email, display_name, plan, documents_used, questions_used, usage_period")
+      .single();
+
+    if (createError || !created) {
+      throw new AppError("unauthorized", "找不到會員資料，請重新登入。", 401);
+    }
+
+    return created as ProfileRow;
   }
 
   const period = currentUsagePeriod();
   if (data.usage_period !== period) {
     const admin = createAdminClient();
     const { data: reset, error: resetError } = await admin
-      .from("profiles")
+      .from("docmate_profiles")
       .update({
         usage_period: period,
         documents_used: 0,
@@ -120,7 +142,7 @@ export async function reserveDocumentSlot(userId: string, limit: number): Promis
 async function reserveDocumentSlotFallback(userId: string, limit: number): Promise<number> {
   const admin = createAdminClient();
   const { data: profile, error } = await admin
-    .from("profiles")
+    .from("docmate_profiles")
     .select("documents_used")
     .eq("id", userId)
     .single();
@@ -139,7 +161,7 @@ async function reserveDocumentSlotFallback(userId: string, limit: number): Promi
 
   const next = profile.documents_used + 1;
   const { data: updated, error: updateError } = await admin
-    .from("profiles")
+    .from("docmate_profiles")
     .update({ documents_used: next })
     .eq("id", userId)
     .eq("documents_used", profile.documents_used)
@@ -159,7 +181,7 @@ async function reserveDocumentSlotFallback(userId: string, limit: number): Promi
 export async function releaseDocumentSlot(userId: string) {
   const admin = createAdminClient();
   const { data: profile } = await admin
-    .from("profiles")
+    .from("docmate_profiles")
     .select("documents_used")
     .eq("id", userId)
     .maybeSingle();
@@ -167,7 +189,7 @@ export async function releaseDocumentSlot(userId: string) {
   if (!profile || profile.documents_used <= 0) return;
 
   await admin
-    .from("profiles")
+    .from("docmate_profiles")
     .update({ documents_used: profile.documents_used - 1 })
     .eq("id", userId)
     .eq("documents_used", profile.documents_used);
@@ -201,7 +223,7 @@ export async function reserveQuestionSlot(userId: string, limit: number): Promis
 async function reserveQuestionSlotFallback(userId: string, limit: number): Promise<number> {
   const admin = createAdminClient();
   const { data: profile, error } = await admin
-    .from("profiles")
+    .from("docmate_profiles")
     .select("questions_used")
     .eq("id", userId)
     .single();
@@ -220,7 +242,7 @@ async function reserveQuestionSlotFallback(userId: string, limit: number): Promi
 
   const next = profile.questions_used + 1;
   const { data: updated, error: updateError } = await admin
-    .from("profiles")
+    .from("docmate_profiles")
     .update({ questions_used: next })
     .eq("id", userId)
     .eq("questions_used", profile.questions_used)
@@ -240,7 +262,7 @@ async function reserveQuestionSlotFallback(userId: string, limit: number): Promi
 export async function releaseQuestionSlot(userId: string) {
   const admin = createAdminClient();
   const { data: profile } = await admin
-    .from("profiles")
+    .from("docmate_profiles")
     .select("questions_used")
     .eq("id", userId)
     .maybeSingle();
@@ -248,7 +270,7 @@ export async function releaseQuestionSlot(userId: string) {
   if (!profile || profile.questions_used <= 0) return;
 
   await admin
-    .from("profiles")
+    .from("docmate_profiles")
     .update({ questions_used: profile.questions_used - 1 })
     .eq("id", userId)
     .eq("questions_used", profile.questions_used);
@@ -258,7 +280,7 @@ export async function releaseQuestionSlot(userId: string) {
 export async function incrementDocumentsUsed(userId: string, currentUsed: number) {
   const admin = createAdminClient();
   const { error } = await admin
-    .from("profiles")
+    .from("docmate_profiles")
     .update({ documents_used: currentUsed + 1 })
     .eq("id", userId);
 
@@ -271,7 +293,7 @@ export async function incrementDocumentsUsed(userId: string, currentUsed: number
 export async function incrementQuestionsUsed(userId: string, currentUsed: number) {
   const admin = createAdminClient();
   const { error } = await admin
-    .from("profiles")
+    .from("docmate_profiles")
     .update({ questions_used: currentUsed + 1 })
     .eq("id", userId);
 

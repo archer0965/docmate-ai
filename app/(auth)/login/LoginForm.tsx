@@ -86,7 +86,7 @@ export function LoginForm() {
           {mode === "login" ? "登入帳號" : "建立帳號"}
         </h1>
         <p className="mt-2 text-sm text-slate-600">
-          登入後即可上傳 PDF、產生摘要，並對文件提問。
+          與拓新雲端 NovaOS 共用同一組登入帳號。相同 Email（含 Google 登入）視為同一使用者。
         </p>
 
         <button
@@ -156,8 +156,7 @@ export function LoginForm() {
         )}
 
         <p className="mt-8 text-xs leading-relaxed text-slate-500">
-          請先在專案根目錄建立 `.env.local`，並到 Supabase 執行
-          `supabase/migrations/001_init_docmate.sql`。
+          若你已在 paycheck.com.de（NovaOS）註冊過，可直接用同一組 Email／密碼登入。
         </p>
       </div>
     </main>

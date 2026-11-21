@@ -152,7 +152,7 @@ export async function confirmTestPayment(options: {
   }
 
   const { error: profileError } = await admin
-    .from("profiles")
+    .from("docmate_profiles")
     .update({ plan: order.target_plan })
     .eq("id", userId);
 
@@ -221,7 +221,7 @@ export async function cancelSubscriptionToFree(userId: string) {
   const now = new Date().toISOString();
 
   const { error: profileError } = await admin
-    .from("profiles")
+    .from("docmate_profiles")
     .update({ plan: "free" })
     .eq("id", userId);
 
