@@ -150,6 +150,16 @@ export async function POST(request: Request, { params }: Params) {
     if (reserved && userId) {
       await releaseQuestionSlot(userId);
     }
+    const msg = error instanceof Error ? error.message : "ask_failed";
+    if (/ai|gemini|502|暫時無法/i.test(msg)) {
+      const { reportToHub } = await import("@/lib/novaos-telemetry");
+      await reportToHub({
+        kind: "ai_failure",
+        severity: "error",
+        message: msg,
+        meta: { userId },
+      });
+    }
     return jsonError(error);
   }
 }
