@@ -4,7 +4,7 @@ import { AppError, jsonError } from "@/lib/errors";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 /** GET：列出目前使用者的文件（支援 q 搜尋） */
 export async function GET(request: Request) {

@@ -3,10 +3,10 @@ import { AppError } from "@/lib/errors";
 
 /** 依目前 API 可用性排序；可用 GEMINI_MODEL 覆寫第一順位 */
 const MODEL_FALLBACKS = [
-  "gemini-3.8-flash",
   "gemini-3-flash-preview",
   "gemini-2.5-flash-lite",
   "gemini-flash-lite-latest",
+  "gemini-3.8-flash",
 ] as const;
 
 export function getGeminiModelName(): string {
