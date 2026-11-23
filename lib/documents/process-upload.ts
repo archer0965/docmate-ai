@@ -122,17 +122,22 @@ export async function processPdfUpload(options: {
   const storagePath = `${userId}/${documentId}.pdf`;
   const title = (file.name.replace(/\.pdf$/i, "") || "未命名文件").slice(0, 120);
 
-  // Node Buffer：避免 ArrayBuffer 在 Storage 變成 0-byte
-  const fileBuffer = Buffer.from(arrayBuffer);
+  // 以 Uint8Array 上傳（兼容 Node / 避免 ArrayBuffer 變成 0-byte）
+  const fileBytes = new Uint8Array(arrayBuffer);
+  if (fileBytes.byteLength <= 0) {
+    await releaseDocumentSlot(userId);
+    throw new AppError("validation_error", "上傳檔案內容為空。", 400);
+  }
+
   const { error: uploadError } = await supabase.storage
     .from("documents")
-    .upload(storagePath, fileBuffer, {
+    .upload(storagePath, fileBytes, {
       contentType: PDF_MIME,
       upsert: false,
     });
 
   if (uploadError) {
-    console.error("[Nova AI Doc] storage upload failed", uploadError);
+    console.error("[Nova AI Doc] storage upload failed", uploadError.message || uploadError);
     await releaseDocumentSlot(userId);
     throw new AppError("storage_error", "上傳到雲端儲存失敗，請稍後再試。", 500);
   }

@@ -36,11 +36,14 @@ export function jsonError(error: unknown) {
   }
 
   console.error("[Nova AI Doc] unexpected error", error);
+  // 短暫帶出細節以利正式環境排查（確認後可收回）
+  const detail = error instanceof Error ? error.message : String(error);
   return NextResponse.json(
     {
       error: {
         code: "internal_error",
         message: "伺服器發生未預期錯誤，請稍後再試。",
+        detail: detail.slice(0, 300),
       },
     },
     { status: 500 },
