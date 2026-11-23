@@ -1,5 +1,5 @@
 import { AppError } from "@/lib/errors";
-import { getGeminiModel } from "@/lib/gemini/client";
+import { generateWithGeminiFallback } from "@/lib/gemini/client";
 import type { PdfPageText } from "@/lib/pdf/parse";
 
 export const SUMMARY_TYPES = [
@@ -55,7 +55,6 @@ export async function summarizeDocument(
   pages: PdfPageText[],
   type: SummaryType = "general",
 ): Promise<string> {
-  const model = getGeminiModel();
   const sample = samplePages(pages);
 
   const prompt = `你是 Nova AI Doc 文件助理。請根據下列 PDF 內容，用「繁體中文（台灣）」輸出。
@@ -73,12 +72,10 @@ ${buildInstructions(type)}
 ${sample}`;
 
   try {
-    const result = await model.generateContent(prompt);
-    const text = result.response.text()?.trim();
-    if (!text) {
-      throw new AppError("ai_error", "AI 未回傳摘要內容，請稍後再試。", 502);
-    }
-    return text;
+    return await generateWithGeminiFallback(async (model) => {
+      const result = await model.generateContent(prompt);
+      return result.response.text() || "";
+    });
   } catch (error) {
     if (error instanceof AppError) throw error;
     console.error("[Nova AI Doc] gemini summarize failed", error);

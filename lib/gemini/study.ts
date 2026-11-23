@@ -1,5 +1,5 @@
 import { AppError } from "@/lib/errors";
-import { getGeminiModel } from "@/lib/gemini/client";
+import { generateWithGeminiFallback } from "@/lib/gemini/client";
 import type { PdfPageText } from "@/lib/pdf/parse";
 
 export const STUDY_TYPES = [
@@ -40,7 +40,6 @@ export async function generateStudyArtifact(
   type: StudyType,
   count = 5,
 ): Promise<{ title: string; payload: Record<string, unknown> }> {
-  const model = getGeminiModel();
   const n = Math.min(Math.max(count, 1), 20);
   const sample = samplePages(pages);
 
@@ -76,11 +75,10 @@ ${schemaHint}
 ${sample}`;
 
   try {
-    const result = await model.generateContent(prompt);
-    const raw = result.response.text()?.trim();
-    if (!raw) {
-      throw new AppError("ai_error", "AI 未回傳學習內容。", 502);
-    }
+    const raw = await generateWithGeminiFallback(async (model) => {
+      const result = await model.generateContent(prompt);
+      return result.response.text() || "";
+    });
 
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {

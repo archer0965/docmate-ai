@@ -1,5 +1,5 @@
 import { AppError } from "@/lib/errors";
-import { getGeminiModel } from "@/lib/gemini/client";
+import { generateWithGeminiFallback } from "@/lib/gemini/client";
 import {
   retrieveRelevantChunks,
   toCitations,
@@ -23,7 +23,6 @@ export async function askDocumentQuestion(
   maxChunks = 12,
   history: { role: "user" | "assistant"; content: string }[] = [],
 ): Promise<AskResult> {
-  const model = getGeminiModel();
   const retrieved = retrieveRelevantChunks(chunks, question, maxChunks);
   const citations = toCitations(retrieved);
 
@@ -60,11 +59,10 @@ ${context || "（沒有檢索到段落）"}
 ${question}`;
 
   try {
-    const result = await model.generateContent(prompt);
-    const raw = result.response.text()?.trim();
-    if (!raw) {
-      throw new AppError("ai_error", "AI 未回傳回答，請稍後再試。", 502);
-    }
+    const raw = await generateWithGeminiFallback(async (model) => {
+      const result = await model.generateContent(prompt);
+      return result.response.text() || "";
+    });
 
     const match = raw.match(/EVIDENCE:\s*(\{[\s\S]*\})\s*$/);
     let answer = raw;
