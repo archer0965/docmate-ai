@@ -122,11 +122,11 @@ export async function processPdfUpload(options: {
   const storagePath = `${userId}/${documentId}.pdf`;
   const title = (file.name.replace(/\.pdf$/i, "") || "未命名文件").slice(0, 120);
 
-  // 使用 Blob，避免部分 runtime 上傳 ArrayBuffer 變成 0-byte
-  const fileBlob = new Blob([new Uint8Array(arrayBuffer)], { type: PDF_MIME });
+  // Node Buffer：避免 ArrayBuffer 在 Storage 變成 0-byte
+  const fileBuffer = Buffer.from(arrayBuffer);
   const { error: uploadError } = await supabase.storage
     .from("documents")
-    .upload(storagePath, fileBlob, {
+    .upload(storagePath, fileBuffer, {
       contentType: PDF_MIME,
       upsert: false,
     });
