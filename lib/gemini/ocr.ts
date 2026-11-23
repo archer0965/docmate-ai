@@ -9,7 +9,8 @@ export async function ocrPdfWithGemini(
   buffer: ArrayBuffer,
   maxPagesHint = 30,
 ): Promise<PdfPageText[]> {
-  const base64 = Buffer.from(buffer).toString("base64");
+  // 複製後再編碼，避免上游 ArrayBuffer 已被 detach
+  const base64 = Buffer.from(new Uint8Array(buffer)).toString("base64");
 
   // Gemini 對大型 PDF 有限制：截斷過大檔案提示
   if (buffer.byteLength > 18 * 1024 * 1024) {

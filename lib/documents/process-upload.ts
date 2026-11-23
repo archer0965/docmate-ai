@@ -79,7 +79,15 @@ export async function processPdfUpload(options: {
 
   assertCanUpload(profile, file.size);
 
-  const arrayBuffer = await file.arrayBuffer();
+  // 先複製成獨立 Buffer：unpdf 等會 detach 原始 ArrayBuffer
+  const fileBuffer = Buffer.from(await file.arrayBuffer());
+  if (fileBuffer.byteLength <= 0) {
+    throw new AppError("validation_error", "上傳檔案內容為空。", 400);
+  }
+  const arrayBuffer = fileBuffer.buffer.slice(
+    fileBuffer.byteOffset,
+    fileBuffer.byteOffset + fileBuffer.byteLength,
+  );
   assertPdfMagicBytes(arrayBuffer);
 
   const contentHash = hashArrayBuffer(arrayBuffer);
@@ -122,16 +130,9 @@ export async function processPdfUpload(options: {
   const storagePath = `${userId}/${documentId}.pdf`;
   const title = (file.name.replace(/\.pdf$/i, "") || "未命名文件").slice(0, 120);
 
-  // 以 Uint8Array 上傳（兼容 Node / 避免 ArrayBuffer 變成 0-byte）
-  const fileBytes = new Uint8Array(arrayBuffer);
-  if (fileBytes.byteLength <= 0) {
-    await releaseDocumentSlot(userId);
-    throw new AppError("validation_error", "上傳檔案內容為空。", 400);
-  }
-
   const { error: uploadError } = await supabase.storage
     .from("documents")
-    .upload(storagePath, fileBytes, {
+    .upload(storagePath, fileBuffer, {
       contentType: PDF_MIME,
       upsert: false,
     });
