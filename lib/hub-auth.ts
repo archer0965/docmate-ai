@@ -1,12 +1,11 @@
-import { NOVAOS_HUB_URL } from "@/lib/novaos-hub";
-import { SITE_URL } from "@/lib/constants";
+import { getNovaOsLoginUrl, getNovaOsSignupUrl } from "@/lib/novaos-hub";
 
+/** Redirect product auth to NovaOS hub; return via /auth/receive after login. */
 export function hubAuthRedirect(
   mode: "login" | "signup",
-  nextPath = "/dashboard"
+  nextPath = "/dashboard",
 ): string {
-  const next = nextPath.startsWith("/") ? nextPath : "/dashboard";
-  const origin = SITE_URL.replace(/\/$/, "");
-  const returnTo = `${origin}/auth/receive?next=${encodeURIComponent(next)}`;
-  return `${NOVAOS_HUB_URL}/${mode}?next=${encodeURIComponent(returnTo)}`;
+  return mode === "signup"
+    ? getNovaOsSignupUrl(nextPath)
+    : getNovaOsLoginUrl(nextPath);
 }

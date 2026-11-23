@@ -50,11 +50,19 @@ export function AskPanel({
     const asked = question.trim();
     setQuestion("");
 
+    const clientRequestId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `ask-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
     try {
       const res = await fetch(`/api/documents/${documentId}/ask`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: asked }),
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": clientRequestId,
+        },
+        body: JSON.stringify({ question: asked, clientRequestId }),
       });
       const json = await res.json();
       if (!res.ok) {

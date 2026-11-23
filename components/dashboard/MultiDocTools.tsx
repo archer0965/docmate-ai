@@ -43,11 +43,23 @@ export function MultiDocTools({
     setError(null);
     setAskResult(null);
     setAskSources([]);
+    const clientRequestId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `mask-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
     try {
       const res = await fetch("/api/ask", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentIds: selected, question: question.trim() }),
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": clientRequestId,
+        },
+        body: JSON.stringify({
+          documentIds: selected,
+          question: question.trim(),
+          clientRequestId,
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error?.message || "多文件問答失敗");

@@ -3,6 +3,13 @@ import { getAiSafetyLimits } from "@/lib/config/limits";
 import { AppError, jsonError } from "@/lib/errors";
 import { askDocumentQuestion } from "@/lib/gemini/ask";
 import { getPlan } from "@/lib/plans";
+import {
+  beginIdempotentRequest,
+  clearIdempotentInFlight,
+  getIdempotentSuccess,
+  normalizeClientRequestId,
+  saveIdempotentSuccess,
+} from "@/lib/security/idempotency";
 import { assertRateLimit, pruneRateLimitBuckets } from "@/lib/security/rate-limit";
 import {
   assertCanAsk,
@@ -18,10 +25,22 @@ export const maxDuration = 60;
 
 type Params = { params: Promise<{ id: string }> };
 
+async function reportAskFailure(message: string, userId: string | null) {
+  if (!/ai|gemini|502|暫時無法/i.test(message)) return;
+  const { reportToHub } = await import("@/lib/novaos-telemetry");
+  await reportToHub({
+    kind: "ai_failure",
+    severity: "error",
+    message,
+    meta: { userId, route: "documents/[id]/ask" },
+  });
+}
+
 /** POST：依文件內容問答，並保存紀錄與來源頁碼 */
 export async function POST(request: Request, { params }: Params) {
   let reserved = false;
   let userId: string | null = null;
+  let idempotencyKey: string | null = null;
 
   try {
     const { id } = await params;
@@ -48,6 +67,7 @@ export async function POST(request: Request, { params }: Params) {
         .trim()
         .min(2, "問題太短")
         .max(safety.maxQuestionChars, `問題請控制在 ${safety.maxQuestionChars} 字內`),
+      clientRequestId: z.string().trim().max(80).optional(),
     });
 
     const json = await request.json().catch(() => null);
@@ -58,6 +78,29 @@ export async function POST(request: Request, { params }: Params) {
         parsed.error.issues[0]?.message || "問題格式不正確。",
         400,
       );
+    }
+
+    idempotencyKey = normalizeClientRequestId(
+      parsed.data.clientRequestId ||
+        request.headers.get("idempotency-key"),
+    );
+
+    if (idempotencyKey) {
+      const cached = getIdempotentSuccess(user.id, idempotencyKey);
+      if (cached) {
+        return NextResponse.json(cached.body, { status: cached.status });
+      }
+      if (!beginIdempotentRequest(user.id, idempotencyKey)) {
+        const raced = getIdempotentSuccess(user.id, idempotencyKey);
+        if (raced) {
+          return NextResponse.json(raced.body, { status: raced.status });
+        }
+        throw new AppError(
+          "conflict",
+          "相同請求處理中或已完成，請稍候再試。",
+          409,
+        );
+      }
     }
 
     // Document isolation: always filter by user_id (RLS also enforces auth.uid() = user_id)
@@ -141,25 +184,26 @@ export async function POST(request: Request, { params }: Params) {
       throw new AppError("internal_error", "無法保存 AI 回答。", 500);
     }
 
-    return NextResponse.json({
+    const payload = {
       answer: assistantMsg.content,
       sourcePages: assistantMsg.source_pages,
       message: assistantMsg,
-    });
+    };
+
+    if (idempotencyKey) {
+      saveIdempotentSuccess(user.id, idempotencyKey, 200, payload);
+    }
+
+    return NextResponse.json(payload);
   } catch (error) {
     if (reserved && userId) {
       await releaseQuestionSlot(userId);
     }
-    const msg = error instanceof Error ? error.message : "ask_failed";
-    if (/ai|gemini|502|暫時無法/i.test(msg)) {
-      const { reportToHub } = await import("@/lib/novaos-telemetry");
-      await reportToHub({
-        kind: "ai_failure",
-        severity: "error",
-        message: msg,
-        meta: { userId },
-      });
+    if (userId && idempotencyKey) {
+      clearIdempotentInFlight(userId, idempotencyKey);
     }
+    const msg = error instanceof Error ? error.message : "ask_failed";
+    await reportAskFailure(msg, userId);
     return jsonError(error);
   }
 }

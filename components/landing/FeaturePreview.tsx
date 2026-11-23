@@ -8,8 +8,8 @@ const FEATURES = [
     description: "針對文件內容提問，取得清楚、可追溯的回答。",
   },
   {
-    title: "考題與筆記",
-    description: "自動產生練習題與筆記架構，幫助複習與記憶。",
+    title: "來源頁碼引用",
+    description: "回答附上引用頁碼，方便回到原文核對。",
   },
 ] as const;
 
@@ -25,7 +25,7 @@ export function FeaturePreview() {
             一份文件，多種學習方式
           </h2>
           <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
-            Nova AI Doc 幫你把靜態 PDF 轉成可摘要、可對話、可複習的學習流程。
+            Nova AI Doc 幫你把靜態 PDF 轉成可摘要、可對話、可追溯引用的工作流程。
           </p>
         </div>
 

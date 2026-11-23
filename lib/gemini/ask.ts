@@ -64,6 +64,12 @@ ${question}`;
       }
     }
 
+    // Only keep citations that exist in the provided chunks (no hallucinated pages)
+    const allowedPages = new Set(
+      chunks.slice(0, maxChunks).map((c) => c.pageNumber),
+    );
+    sourcePages = sourcePages.filter((p) => allowedPages.has(p));
+
     return { answer, sourcePages };
   } catch (error) {
     if (error instanceof AppError) throw error;

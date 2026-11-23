@@ -43,8 +43,8 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     features: [
       "每月 50 份文件",
       "每月 500 次提問",
-      "AI 考題與筆記",
-      "完整文件管理",
+      "多文件問答與比較",
+      "資料夾整理",
     ],
   },
   business: {
@@ -60,7 +60,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       "每月 2,000 次提問",
       "進階文件分析",
       "優先處理",
-      "團隊功能",
+      "團隊功能（規劃中）",
     ],
   },
 };

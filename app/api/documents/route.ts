@@ -2,6 +2,13 @@ import { requireUser } from "@/lib/auth/require-user";
 import { normalizeFolder } from "@/lib/documents/folders";
 import { processPdfUpload } from "@/lib/documents/process-upload";
 import { AppError, jsonError } from "@/lib/errors";
+import {
+  beginIdempotentRequest,
+  clearIdempotentInFlight,
+  getIdempotentSuccess,
+  normalizeClientRequestId,
+  saveIdempotentSuccess,
+} from "@/lib/security/idempotency";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -60,11 +67,19 @@ export async function GET(request: Request) {
 
 /** POST：上傳 PDF / DOCX → Storage → 解析 → 分段 → Gemini 摘要 */
 export async function POST(request: Request) {
+  let userId: string | null = null;
+  let idempotencyKey: string | null = null;
+
   try {
     const { user, supabase } = await requireUser();
+    userId = user.id;
     const formData = await request.formData();
     const file = formData.get("file");
     const folder = normalizeFolder(formData.get("folder"));
+    idempotencyKey = normalizeClientRequestId(
+      String(formData.get("clientRequestId") || "") ||
+        request.headers.get("idempotency-key"),
+    );
 
     if (!(file instanceof File)) {
       throw new AppError(
@@ -72,6 +87,24 @@ export async function POST(request: Request) {
         "請使用 multipart 欄位 file 上傳 PDF 或 Word（.docx）。",
         400,
       );
+    }
+
+    if (idempotencyKey) {
+      const cached = getIdempotentSuccess(user.id, idempotencyKey);
+      if (cached) {
+        return NextResponse.json(cached.body, { status: cached.status });
+      }
+      if (!beginIdempotentRequest(user.id, idempotencyKey)) {
+        const raced = getIdempotentSuccess(user.id, idempotencyKey);
+        if (raced) {
+          return NextResponse.json(raced.body, { status: raced.status });
+        }
+        throw new AppError(
+          "conflict",
+          "相同上傳處理中或已完成，請稍候再試。",
+          409,
+        );
+      }
     }
 
     // Document isolation: processPdfUpload always stamps user_id on rows + storage path
@@ -82,8 +115,26 @@ export async function POST(request: Request) {
       folder,
     });
 
-    return NextResponse.json({ document }, { status: 201 });
+    const payload = { document };
+    if (idempotencyKey) {
+      saveIdempotentSuccess(user.id, idempotencyKey, 201, payload);
+    }
+
+    return NextResponse.json(payload, { status: 201 });
   } catch (error) {
+    if (userId && idempotencyKey) {
+      clearIdempotentInFlight(userId, idempotencyKey);
+    }
+    const msg = error instanceof Error ? error.message : "upload_failed";
+    if (/ai|gemini|502|暫時無法/i.test(msg)) {
+      const { reportToHub } = await import("@/lib/novaos-telemetry");
+      await reportToHub({
+        kind: "ai_failure",
+        severity: "error",
+        message: msg,
+        meta: { userId, route: "documents/upload" },
+      });
+    }
     return jsonError(error);
   }
 }

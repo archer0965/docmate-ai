@@ -26,15 +26,22 @@ export function UploadPanel({ maxUploadBytes, documentsRemaining }: UploadPanelP
     setError(null);
     setSuccess(null);
 
+    const clientRequestId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `up-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
     try {
       const body = new FormData();
       body.append("file", file);
+      body.append("clientRequestId", clientRequestId);
       if (folder.trim()) {
         body.append("folder", folder.trim());
       }
 
       const res = await fetch("/api/documents", {
         method: "POST",
+        headers: { "Idempotency-Key": clientRequestId },
         body,
       });
       const json = await res.json();

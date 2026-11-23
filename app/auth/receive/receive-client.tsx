@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { applyHandoffSession } from "@/lib/auth-receive";
 import { createClient } from "@/lib/supabase/client";
-import { NOVAOS_HUB_URL } from "@/lib/novaos-hub";
+import { getNovaOsLoginUrl } from "@/lib/novaos-hub";
 
 function sanitizeNext(raw: string | null, fallback = "/dashboard") {
   if (!raw) return fallback;
@@ -13,6 +13,10 @@ function sanitizeNext(raw: string | null, fallback = "/dashboard") {
   return next;
 }
 
+/**
+ * Hub returns here with #access_token&refresh_token after login.
+ * Persist session on this origin, then restore `next`.
+ */
 export function AuthReceiveClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -32,10 +36,8 @@ export function AuthReceiveClient() {
         return;
       }
       setMessage("登入狀態未帶入，改導向拓新雲端…");
-      const returnTo = `${window.location.origin}/auth/receive?next=${encodeURIComponent(next)}`;
-      window.location.replace(
-        `${NOVAOS_HUB_URL}/login?next=${encodeURIComponent(returnTo)}`
-      );
+      // getNovaOsLoginUrl embeds absolute /auth/receive?next=… for hub return
+      window.location.replace(getNovaOsLoginUrl(next));
     })().catch(() => setMessage("登入失敗，請重新嘗試"));
 
     return () => {
