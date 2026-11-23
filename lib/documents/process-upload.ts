@@ -122,15 +122,14 @@ export async function processPdfUpload(options: {
   const storagePath = `${userId}/${documentId}.pdf`;
   const title = (file.name.replace(/\.pdf$/i, "") || "未命名文件").slice(0, 120);
 
-  // 使用 Uint8Array／Blob，避免部分 runtime 上傳 ArrayBuffer 變成 0-byte
-  const fileBytes = new Uint8Array(arrayBuffer);
+  // 使用 Blob，避免部分 runtime 上傳 ArrayBuffer 變成 0-byte
+  const fileBlob = new Blob([new Uint8Array(arrayBuffer)], { type: PDF_MIME });
   const { error: uploadError } = await supabase.storage
     .from("documents")
-    .upload(storagePath, fileBytes, {
+    .upload(storagePath, fileBlob, {
       contentType: PDF_MIME,
       upsert: false,
-      duplex: "half",
-    } as { contentType: string; upsert: boolean });
+    });
 
   if (uploadError) {
     console.error("[Nova AI Doc] storage upload failed", uploadError);
