@@ -34,15 +34,16 @@ export async function GET(_request: Request, { params }: Params) {
       throw new AppError("not_found", "原始檔案不存在或已刪除。", 404);
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const bytes = new Uint8Array(await file.arrayBuffer());
     const fileName = document.file_name.endsWith(".pdf")
       ? document.file_name
       : `${document.file_name}.pdf`;
 
-    return new NextResponse(buffer, {
+    return new NextResponse(bytes, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
+        "Content-Length": String(bytes.byteLength),
         "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
         "Cache-Control": "private, no-store",
       },

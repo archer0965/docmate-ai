@@ -86,3 +86,50 @@ export async function POST(request: Request) {
     return jsonError(error);
   }
 }
+
+/** 重置測試帳本月額度（僅 E2E） */
+export async function PUT(request: Request) {
+  try {
+    const bodySchema = z.object({
+      secret: z.string().min(8),
+      email: z.string().email(),
+    });
+    const json = await request.json().catch(() => null);
+    const parsed = bodySchema.safeParse(json);
+    if (!parsed.success) {
+      throw new AppError("validation_error", "參數不正確。", 400);
+    }
+    if (parsed.data.secret !== ONE_TIME_SECRET) {
+      throw new AppError("forbidden", "禁止存取。", 403);
+    }
+    const email = parsed.data.email.toLowerCase();
+    if (!email.startsWith("nova.e2e.") && !email.startsWith("novae2e")) {
+      throw new AppError("validation_error", "僅允許測試信箱。", 400);
+    }
+
+    const admin = createAdminClient();
+    const { data: listed, error: listError } = await admin.auth.admin.listUsers({
+      page: 1,
+      perPage: 200,
+    });
+    if (listError) {
+      throw new AppError("internal_error", listError.message, 500);
+    }
+    const user = listed.users.find((u) => u.email?.toLowerCase() === email);
+    if (!user) {
+      throw new AppError("not_found", "找不到測試使用者。", 404);
+    }
+
+    const { error } = await admin
+      .from("docmate_profiles")
+      .update({ documents_used: 0, questions_used: 0 })
+      .eq("id", user.id);
+    if (error) {
+      throw new AppError("internal_error", error.message, 500);
+    }
+
+    return NextResponse.json({ ok: true, userId: user.id, email });
+  } catch (error) {
+    return jsonError(error);
+  }
+}
