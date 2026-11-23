@@ -180,6 +180,11 @@ async function reserveDocumentSlotFallback(userId: string, limit: number): Promi
 
 export async function releaseDocumentSlot(userId: string) {
   const admin = createAdminClient();
+  const { error } = await admin.rpc("release_document_slot", {
+    p_user_id: userId,
+  });
+  if (!error) return;
+
   const { data: profile } = await admin
     .from("docmate_profiles")
     .select("documents_used")
@@ -261,6 +266,11 @@ async function reserveQuestionSlotFallback(userId: string, limit: number): Promi
 
 export async function releaseQuestionSlot(userId: string) {
   const admin = createAdminClient();
+  const { error } = await admin.rpc("release_question_slot", {
+    p_user_id: userId,
+  });
+  if (!error) return;
+
   const { data: profile } = await admin
     .from("docmate_profiles")
     .select("questions_used")

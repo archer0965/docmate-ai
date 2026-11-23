@@ -1,12 +1,14 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import type { Citation } from "@/types";
 
 export type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
   source_pages: number[];
+  citations?: Citation[];
   created_at: string;
 };
 
@@ -24,6 +26,25 @@ export function AskPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [remaining, setRemaining] = useState(questionsRemaining);
+  const [preview, setPreview] = useState<{ title: string; page: number; text: string } | null>(
+    null,
+  );
+
+  async function openCitation(c: Citation) {
+    try {
+      const res = await fetch(
+        `/api/documents/${c.documentId}/chunks?page=${c.pageNumber}&chunkIndex=${c.chunkIndex}`,
+      );
+      const json = await res.json();
+      setPreview({
+        title: c.documentTitle || json.title || "文件",
+        page: c.pageNumber,
+        text: json.chunks?.[0]?.content || c.excerpt,
+      });
+    } catch {
+      setPreview({ title: c.documentTitle, page: c.pageNumber, text: c.excerpt });
+    }
+  }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -59,6 +80,7 @@ export function AskPanel({
         role: "assistant",
         content: json.answer,
         source_pages: json.sourcePages || [],
+        citations: json.citations || [],
         created_at: json.message.created_at,
       };
 
@@ -66,7 +88,6 @@ export function AskPanel({
       setRemaining((n) => Math.max(n - 1, 0));
     } catch (err) {
       setError(err instanceof Error ? err.message : "提問失敗");
-      // 失敗時拿掉 optimistic 使用者訊息
       setMessages((prev) => prev.filter((m) => m.id !== optimisticUser.id));
       setQuestion(asked);
     } finally {
@@ -95,10 +116,26 @@ export function AskPanel({
             }`}
           >
             <p className="whitespace-pre-wrap">{message.content}</p>
-            {message.role === "assistant" && message.source_pages?.length > 0 && (
-              <p className="mt-2 text-xs text-brand-700">
-                來源頁碼：{message.source_pages.join("、")}
-              </p>
+            {message.role === "assistant" && message.citations && message.citations.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {message.citations.map((c, i) => (
+                  <button
+                    key={`${c.pageNumber}-${i}`}
+                    type="button"
+                    onClick={() => openCitation(c)}
+                    className="rounded bg-brand-50 px-2 py-0.5 text-xs text-brand-800"
+                  >
+                    p.{c.pageNumber}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              message.role === "assistant" &&
+              message.source_pages?.length > 0 && (
+                <p className="mt-2 text-xs text-brand-700">
+                  來源頁碼：{message.source_pages.join("、")}
+                </p>
+              )
             )}
           </div>
         ))}
@@ -122,6 +159,20 @@ export function AskPanel({
       </form>
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+
+      {preview && (
+        <div className="mt-4 rounded-xl border border-brand-100 bg-slate-50 p-3 text-sm">
+          <div className="flex justify-between gap-2">
+            <p className="font-medium text-slate-800">
+              {preview.title} · 第 {preview.page} 頁
+            </p>
+            <button type="button" className="text-xs text-slate-500" onClick={() => setPreview(null)}>
+              關閉
+            </button>
+          </div>
+          <p className="mt-2 whitespace-pre-wrap text-slate-700">{preview.text}</p>
+        </div>
+      )}
     </section>
   );
 }

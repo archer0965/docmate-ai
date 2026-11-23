@@ -6,21 +6,41 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-/** GET：列出目前使用者的文件 */
-export async function GET() {
+/** GET：列出目前使用者的文件（支援 q 搜尋） */
+export async function GET(request: Request) {
   try {
     const { user, supabase } = await requireUser();
+    const url = new URL(request.url);
+    const q = (url.searchParams.get("q") || "").trim();
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("documents")
       .select(
-        "id, title, file_name, file_size, page_count, status, error_message, summary, created_at, updated_at",
+        "id, title, file_name, file_size, page_count, status, error_message, summary, created_at, updated_at, content_hash, source_kind",
       )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
+    if (q) {
+      query = query.or(`title.ilike.%${q}%,file_name.ilike.%${q}%`);
+    }
+
+    const { data, error } = await query;
+
     if (error) {
-      throw new AppError("internal_error", "無法取得文件列表。", 500);
+      // 新欄位尚未 migration 時後備
+      const { data: fallback, error: fallbackError } = await supabase
+        .from("documents")
+        .select(
+          "id, title, file_name, file_size, page_count, status, error_message, summary, created_at, updated_at",
+        )
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (fallbackError) {
+        throw new AppError("internal_error", "無法取得文件列表。", 500);
+      }
+      return NextResponse.json({ documents: fallback ?? [] });
     }
 
     return NextResponse.json({ documents: data ?? [] });
@@ -29,7 +49,7 @@ export async function GET() {
   }
 }
 
-/** POST：上傳 PDF → Storage → 解析 → 分段 → Gemini 摘要 */
+/** POST：上傳 PDF → Storage → 解析／OCR → 分段 → Gemini 摘要 */
 export async function POST(request: Request) {
   try {
     const { user, supabase } = await requireUser();
@@ -40,13 +60,19 @@ export async function POST(request: Request) {
       throw new AppError("validation_error", "請使用 multipart 欄位 file 上傳 PDF。", 400);
     }
 
-    const document = await processPdfUpload({
+    const result = await processPdfUpload({
       supabase,
       userId: user.id,
       file,
     });
 
-    return NextResponse.json({ document }, { status: 201 });
+    return NextResponse.json(
+      {
+        document: result.document,
+        deduplicated: result.deduplicated,
+      },
+      { status: result.deduplicated ? 200 : 201 },
+    );
   } catch (error) {
     return jsonError(error);
   }

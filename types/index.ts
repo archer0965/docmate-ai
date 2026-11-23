@@ -15,6 +15,43 @@ export type DocumentRecord = {
   summary: string | null;
   created_at: string;
   updated_at: string;
+  content_hash?: string | null;
+  source_kind?: "text" | "ocr" | "mixed" | null;
 };
 
 export type ChatRole = "user" | "assistant";
+
+export type Citation = {
+  documentId: string;
+  documentTitle: string;
+  pageNumber: number;
+  chunkIndex: number;
+  excerpt: string;
+};
+
+export type ChatMessageRecord = {
+  id: string;
+  role: ChatRole;
+  content: string;
+  source_pages: number[];
+  citations?: Citation[];
+  created_at: string;
+};
+
+export type SummaryType =
+  | "general"
+  | "detailed"
+  | "chapters"
+  | "bullets"
+  | "keywords"
+  | "exam";
+
+export type StudyType =
+  | "notes"
+  | "concepts"
+  | "mcq"
+  | "true_false"
+  | "qa"
+  | "flashcards"
+  | "mock_exam"
+  | "wrong_book";

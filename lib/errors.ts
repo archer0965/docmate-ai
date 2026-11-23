@@ -8,6 +8,7 @@ export type ErrorCode =
   | "file_too_large"
   | "invalid_file_type"
   | "pdf_parse_failed"
+  | "ocr_failed"
   | "empty_document"
   | "quota_exceeded"
   | "ai_error"

@@ -28,7 +28,9 @@ export default async function DashboardPage() {
 
   const { data: documents } = await supabase
     .from("documents")
-    .select("id, title, file_name, status, page_count, created_at, error_message")
+    .select(
+      "id, title, file_name, file_size, status, page_count, created_at, error_message",
+    )
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -37,24 +39,24 @@ export default async function DashboardPage() {
       <div className="space-y-8">
         <section className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="font-display text-3xl font-bold text-slate-900">我的文件</h1>
+            <h1 className="font-display text-3xl font-bold text-slate-900">文件管理中心</h1>
             <p className="mt-2 text-sm text-slate-600">
               目前方案：{plan.name} · 文件 {profile.documents_used}/{plan.documentsPerMonth} ·
               提問 {profile.questions_used}/{plan.questionsPerMonth}（週期 {profile.usage_period}）
             </p>
           </div>
-          <div className="flex gap-2 text-sm">
+          <div className="flex flex-wrap gap-2 text-sm">
             <Link
-              href="/dashboard/upgrade"
+              href="/dashboard/workspace"
               className="rounded-xl bg-brand-600 px-4 py-2 font-semibold text-white hover:bg-brand-700"
             >
-              升級方案
+              開啟 AI 工作區
             </Link>
             <Link
-              href="/dashboard/billing"
+              href="/dashboard/upgrade"
               className="rounded-xl border border-brand-200 px-4 py-2 font-semibold text-brand-800 hover:bg-brand-50"
             >
-              訂閱管理
+              升級方案
             </Link>
           </div>
         </section>
@@ -65,7 +67,7 @@ export default async function DashboardPage() {
         />
 
         <section>
-          <h2 className="mb-3 font-display text-xl font-semibold text-slate-900">文件列表</h2>
+          <h2 className="mb-3 font-display text-xl font-semibold text-slate-900">我的文件</h2>
           <DocumentList documents={documents || []} />
         </section>
       </div>

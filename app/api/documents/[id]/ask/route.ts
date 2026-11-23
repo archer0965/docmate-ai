@@ -7,6 +7,7 @@ import { assertRateLimit, pruneRateLimitBuckets } from "@/lib/security/rate-limi
 import {
   assertCanAsk,
   getFreshProfile,
+  releaseQuestionSlot,
   reserveQuestionSlot,
 } from "@/lib/usage/quota";
 import { NextResponse } from "next/server";
@@ -17,11 +18,15 @@ export const maxDuration = 60;
 
 type Params = { params: Promise<{ id: string }> };
 
-/** POST：依文件內容問答，並保存紀錄與來源頁碼 */
+/** POST：依文件內容問答（RAG + 引用），並保存紀錄 */
 export async function POST(request: Request, { params }: Params) {
+  let reserved = false;
+  let userId: string | null = null;
+
   try {
     const { id } = await params;
     const { user, supabase } = await requireUser();
+    userId = user.id;
     pruneRateLimitBuckets();
 
     const profile = await getFreshProfile(supabase, user.id);
@@ -43,6 +48,7 @@ export async function POST(request: Request, { params }: Params) {
         .trim()
         .min(2, "問題太短")
         .max(safety.maxQuestionChars, `問題請控制在 ${safety.maxQuestionChars} 字內`),
+      sessionId: z.string().uuid().optional(),
     });
 
     const json = await request.json().catch(() => null);
@@ -57,7 +63,7 @@ export async function POST(request: Request, { params }: Params) {
 
     const { data: document, error: docError } = await supabase
       .from("documents")
-      .select("id, status")
+      .select("id, title, status")
       .eq("id", id)
       .eq("user_id", user.id)
       .maybeSingle();
@@ -78,7 +84,7 @@ export async function POST(request: Request, { params }: Params) {
 
     const { data: chunkRows, error: chunkError } = await supabase
       .from("document_chunks")
-      .select("chunk_index, page_number, content")
+      .select("id, chunk_index, page_number, content")
       .eq("document_id", id)
       .eq("user_id", user.id)
       .order("chunk_index", { ascending: true })
@@ -92,51 +98,120 @@ export async function POST(request: Request, { params }: Params) {
     }
 
     const question = parsed.data.question;
+    const sessionId = parsed.data.sessionId;
 
-    // 呼叫 AI 前預扣額度（失敗也不退，避免刷 API）
+    // 載入近期對話作為上下文
+    let historyQuery = supabase
+      .from("chat_messages")
+      .select("role, content")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(8);
+
+    if (sessionId) {
+      historyQuery = historyQuery.eq("session_id", sessionId);
+    } else {
+      historyQuery = historyQuery.eq("document_id", id);
+    }
+
+    const { data: historyRows } = await historyQuery;
+    const history = (historyRows || [])
+      .reverse()
+      .map((h) => ({
+        role: h.role as "user" | "assistant",
+        content: h.content,
+      }));
+
     await reserveQuestionSlot(user.id, plan.questionsPerMonth);
+    reserved = true;
 
-    const { error: userMsgError } = await supabase.from("chat_messages").insert({
+    const userInsert: Record<string, unknown> = {
       document_id: id,
       user_id: user.id,
       role: "user",
       content: question,
       source_pages: [],
-    });
+      citations: [],
+    };
+    if (sessionId) userInsert.session_id = sessionId;
+
+    const { error: userMsgError } = await supabase.from("chat_messages").insert(userInsert);
 
     if (userMsgError) {
+      await releaseQuestionSlot(user.id);
+      reserved = false;
       throw new AppError("internal_error", "無法保存提問紀錄。", 500);
     }
 
-    const result = await askDocumentQuestion(
-      question,
-      chunkRows.map((row) => ({
-        chunkIndex: row.chunk_index,
-        pageNumber: row.page_number,
-        content: row.content,
-      })),
-      safety.maxChunksForAsk,
-    );
+    let result;
+    try {
+      result = await askDocumentQuestion(
+        question,
+        chunkRows.map((row) => ({
+          id: row.id,
+          documentId: id,
+          documentTitle: document.title,
+          chunkIndex: row.chunk_index,
+          pageNumber: row.page_number,
+          content: row.content,
+        })),
+        Math.min(safety.maxChunksForAsk, 12),
+        history,
+      );
+    } catch (aiError) {
+      await releaseQuestionSlot(user.id);
+      reserved = false;
+      throw aiError;
+    }
+
+    const assistantInsert: Record<string, unknown> = {
+      document_id: id,
+      user_id: user.id,
+      role: "assistant",
+      content: result.answer,
+      source_pages: result.sourcePages,
+      citations: result.citations,
+    };
+    if (sessionId) assistantInsert.session_id = sessionId;
 
     const { data: assistantMsg, error: assistantError } = await supabase
       .from("chat_messages")
-      .insert({
-        document_id: id,
-        user_id: user.id,
-        role: "assistant",
-        content: result.answer,
-        source_pages: result.sourcePages,
-      })
-      .select("id, role, content, source_pages, created_at")
+      .insert(assistantInsert)
+      .select("id, role, content, source_pages, citations, created_at")
       .single();
 
     if (assistantError || !assistantMsg) {
-      throw new AppError("internal_error", "無法保存 AI 回答。", 500);
+      // citations 欄位可能不存在
+      const { data: fallbackMsg, error: fallbackError } = await supabase
+        .from("chat_messages")
+        .insert({
+          document_id: id,
+          user_id: user.id,
+          role: "assistant",
+          content: result.answer,
+          source_pages: result.sourcePages,
+        })
+        .select("id, role, content, source_pages, created_at")
+        .single();
+
+      if (fallbackError || !fallbackMsg) {
+        throw new AppError("internal_error", "無法保存 AI 回答。", 500);
+      }
+
+      return NextResponse.json({
+        answer: fallbackMsg.content,
+        sourcePages: fallbackMsg.source_pages,
+        citations: result.citations,
+        insufficientEvidence: result.insufficientEvidence,
+        message: fallbackMsg,
+      });
     }
 
     return NextResponse.json({
       answer: assistantMsg.content,
       sourcePages: assistantMsg.source_pages,
+      citations: assistantMsg.citations ?? result.citations,
+      insufficientEvidence: result.insufficientEvidence,
       message: assistantMsg,
     });
   } catch (error) {
@@ -163,13 +238,23 @@ export async function GET(_request: Request, { params }: Params) {
 
     const { data, error } = await supabase
       .from("chat_messages")
-      .select("id, role, content, source_pages, created_at")
+      .select("id, role, content, source_pages, citations, created_at")
       .eq("document_id", id)
       .eq("user_id", user.id)
       .order("created_at", { ascending: true });
 
     if (error) {
-      throw new AppError("internal_error", "無法讀取對話紀錄。", 500);
+      const { data: fallback, error: fallbackError } = await supabase
+        .from("chat_messages")
+        .select("id, role, content, source_pages, created_at")
+        .eq("document_id", id)
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true });
+
+      if (fallbackError) {
+        throw new AppError("internal_error", "無法讀取對話紀錄。", 500);
+      }
+      return NextResponse.json({ messages: fallback ?? [] });
     }
 
     return NextResponse.json({ messages: data ?? [] });

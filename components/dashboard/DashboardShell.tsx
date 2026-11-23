@@ -23,6 +23,9 @@ export function DashboardShell({
               <Link href="/dashboard" className="hover:text-brand-700">
                 文件
               </Link>
+              <Link href="/dashboard/workspace" className="hover:text-brand-700">
+                工作區
+              </Link>
               <Link href="/dashboard/upgrade" className="hover:text-brand-700">
                 升級
               </Link>

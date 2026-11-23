@@ -41,7 +41,7 @@ export function assertHasTextContent(pages: PdfPageText[]) {
   if (!joined) {
     throw new AppError(
       "empty_document",
-      "此 PDF 沒有可擷取的文字（可能是純掃描圖片）。請先做 OCR 後再上傳。",
+      "此 PDF 沒有可擷取的文字（可能是純掃描圖片）。系統將嘗試 OCR；若仍失敗請改上傳可選取文字的 PDF。",
       422,
     );
   }
