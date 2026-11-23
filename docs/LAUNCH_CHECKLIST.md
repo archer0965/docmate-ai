@@ -13,6 +13,8 @@
    - `002_lock_profile_quota.sql`
    - `003_billing_subscriptions.sql`
    - `004_launch_hardening.sql`
+   - `005_shared_novaos_auth.sql`
+   - `006_workspace_study_rag.sql`（工作區／多型摘要／考題／引用／額度退還）
 3. Supabase Auth 設定 Site URL / Redirect URLs（含正式網域 `/auth/callback`）
 4. 永久公開網址：`https://docmate-ai-one.vercel.app`（細節見 README「永久公開網址」）
 
