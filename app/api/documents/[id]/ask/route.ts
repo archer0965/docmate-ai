@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/auth/require-user";
+import { insertChatMessage } from "@/lib/chat/insert-message";
 import { getAiSafetyLimits } from "@/lib/config/limits";
 import { AppError, jsonError } from "@/lib/errors";
 import { askDocumentQuestion } from "@/lib/gemini/ask";
@@ -20,13 +21,9 @@ type Params = { params: Promise<{ id: string }> };
 
 /** POST：依文件內容問答（RAG + 引用），並保存紀錄 */
 export async function POST(request: Request, { params }: Params) {
-  let reserved = false;
-  let userId: string | null = null;
-
   try {
     const { id } = await params;
     const { user, supabase } = await requireUser();
-    userId = user.id;
     pruneRateLimitBuckets();
 
     const profile = await getFreshProfile(supabase, user.id);
@@ -100,7 +97,6 @@ export async function POST(request: Request, { params }: Params) {
     const question = parsed.data.question;
     const sessionId = parsed.data.sessionId;
 
-    // 載入近期對話作為上下文
     let historyQuery = supabase
       .from("chat_messages")
       .select("role, content")
@@ -123,23 +119,19 @@ export async function POST(request: Request, { params }: Params) {
       }));
 
     await reserveQuestionSlot(user.id, plan.questionsPerMonth);
-    reserved = true;
 
-    const userInsert: Record<string, unknown> = {
+    const userSaved = await insertChatMessage(supabase, {
       document_id: id,
+      session_id: sessionId,
       user_id: user.id,
       role: "user",
       content: question,
       source_pages: [],
       citations: [],
-    };
-    if (sessionId) userInsert.session_id = sessionId;
+    });
 
-    const { error: userMsgError } = await supabase.from("chat_messages").insert(userInsert);
-
-    if (userMsgError) {
+    if (userSaved.error || !userSaved.data) {
       await releaseQuestionSlot(user.id);
-      reserved = false;
       throw new AppError("internal_error", "無法保存提問紀錄。", 500);
     }
 
@@ -160,59 +152,29 @@ export async function POST(request: Request, { params }: Params) {
       );
     } catch (aiError) {
       await releaseQuestionSlot(user.id);
-      reserved = false;
       throw aiError;
     }
 
-    const assistantInsert: Record<string, unknown> = {
+    const assistantSaved = await insertChatMessage(supabase, {
       document_id: id,
+      session_id: sessionId,
       user_id: user.id,
       role: "assistant",
       content: result.answer,
       source_pages: result.sourcePages,
       citations: result.citations,
-    };
-    if (sessionId) assistantInsert.session_id = sessionId;
+    });
 
-    const { data: assistantMsg, error: assistantError } = await supabase
-      .from("chat_messages")
-      .insert(assistantInsert)
-      .select("id, role, content, source_pages, citations, created_at")
-      .single();
-
-    if (assistantError || !assistantMsg) {
-      // citations 欄位可能不存在
-      const { data: fallbackMsg, error: fallbackError } = await supabase
-        .from("chat_messages")
-        .insert({
-          document_id: id,
-          user_id: user.id,
-          role: "assistant",
-          content: result.answer,
-          source_pages: result.sourcePages,
-        })
-        .select("id, role, content, source_pages, created_at")
-        .single();
-
-      if (fallbackError || !fallbackMsg) {
-        throw new AppError("internal_error", "無法保存 AI 回答。", 500);
-      }
-
-      return NextResponse.json({
-        answer: fallbackMsg.content,
-        sourcePages: fallbackMsg.source_pages,
-        citations: result.citations,
-        insufficientEvidence: result.insufficientEvidence,
-        message: fallbackMsg,
-      });
+    if (assistantSaved.error || !assistantSaved.data) {
+      throw new AppError("internal_error", "無法保存 AI 回答。", 500);
     }
 
     return NextResponse.json({
-      answer: assistantMsg.content,
-      sourcePages: assistantMsg.source_pages,
-      citations: assistantMsg.citations ?? result.citations,
+      answer: assistantSaved.data.content,
+      sourcePages: assistantSaved.data.source_pages,
+      citations: assistantSaved.data.citations ?? result.citations,
       insufficientEvidence: result.insufficientEvidence,
-      message: assistantMsg,
+      message: assistantSaved.data,
     });
   } catch (error) {
     return jsonError(error);
