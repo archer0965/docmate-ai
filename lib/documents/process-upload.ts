@@ -18,16 +18,23 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 const PDF_MIME = "application/pdf";
 
+function bufferToArrayBuffer(buf: Buffer): ArrayBuffer {
+  return buf.buffer.slice(
+    buf.byteOffset,
+    buf.byteOffset + buf.byteLength,
+  ) as ArrayBuffer;
+}
+
 async function extractPagesWithOcrFallback(
-  arrayBuffer: ArrayBuffer,
+  fileBuffer: Buffer,
   maxPages: number,
 ): Promise<{ pages: PdfPageText[]; sourceKind: "text" | "ocr" | "mixed" }> {
   let pages: PdfPageText[];
   try {
-    pages = await parsePdfPages(arrayBuffer);
-  } catch (error) {
-    // 解析失敗：嘗試整份 OCR
-    const ocrPages = await ocrPdfWithGemini(arrayBuffer, maxPages);
+    // 每次傳入獨立副本，避免 unpdf detach 影響後續 OCR／上傳
+    pages = await parsePdfPages(bufferToArrayBuffer(fileBuffer));
+  } catch {
+    const ocrPages = await ocrPdfWithGemini(bufferToArrayBuffer(fileBuffer), maxPages);
     assertHasTextContent(ocrPages);
     assertPageLimit(ocrPages.length, maxPages);
     return { pages: ocrPages, sourceKind: "ocr" };
@@ -39,8 +46,7 @@ async function extractPagesWithOcrFallback(
     return { pages, sourceKind: "text" };
   }
 
-  // 無文字層 → OCR
-  const ocrPages = await ocrPdfWithGemini(arrayBuffer, maxPages);
+  const ocrPages = await ocrPdfWithGemini(bufferToArrayBuffer(fileBuffer), maxPages);
   assertHasTextContent(ocrPages);
   assertPageLimit(ocrPages.length, maxPages);
   return { pages: ocrPages, sourceKind: "ocr" };
@@ -84,13 +90,9 @@ export async function processPdfUpload(options: {
   if (fileBuffer.byteLength <= 0) {
     throw new AppError("validation_error", "上傳檔案內容為空。", 400);
   }
-  const arrayBuffer = fileBuffer.buffer.slice(
-    fileBuffer.byteOffset,
-    fileBuffer.byteOffset + fileBuffer.byteLength,
-  );
-  assertPdfMagicBytes(arrayBuffer);
+  assertPdfMagicBytes(bufferToArrayBuffer(fileBuffer));
 
-  const contentHash = hashArrayBuffer(arrayBuffer);
+  const contentHash = hashArrayBuffer(bufferToArrayBuffer(fileBuffer));
 
   // 去重：同使用者已有相同內容的就緒文件 → 不重複扣額度
   try {
@@ -114,7 +116,7 @@ export async function processPdfUpload(options: {
   }
 
   const { pages, sourceKind } = await extractPagesWithOcrFallback(
-    arrayBuffer,
+    fileBuffer,
     safety.maxPages,
   );
 
