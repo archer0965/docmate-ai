@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
-/** GET：列出目前使用者的文件（支援 q 搜尋） */
+/** GET：列出本人文件 + 團隊共享文件（RLS） */
 export async function GET(request: Request) {
   try {
     const { user, supabase } = await requireUser();
@@ -16,9 +16,8 @@ export async function GET(request: Request) {
     let query = supabase
       .from("documents")
       .select(
-        "id, title, file_name, file_size, page_count, status, error_message, summary, created_at, updated_at, content_hash, source_kind",
+        "id, title, file_name, file_size, page_count, status, error_message, summary, team_id, user_id, created_at, updated_at, content_hash, source_kind",
       )
-      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
     if (q) {
@@ -28,7 +27,7 @@ export async function GET(request: Request) {
     const { data, error } = await query;
 
     if (error) {
-      // 新欄位尚未 migration 時後備
+      // 新欄位尚未 migration 時後備：僅本人
       const { data: fallback, error: fallbackError } = await supabase
         .from("documents")
         .select(
@@ -40,10 +39,22 @@ export async function GET(request: Request) {
       if (fallbackError) {
         throw new AppError("internal_error", "無法取得文件列表。", 500);
       }
-      return NextResponse.json({ documents: fallback ?? [] });
+      return NextResponse.json({
+        documents: (fallback ?? []).map((d) => ({
+          ...d,
+          team_id: null,
+          user_id: user.id,
+          isOwner: true,
+        })),
+      });
     }
 
-    return NextResponse.json({ documents: data ?? [] });
+    return NextResponse.json({
+      documents: (data ?? []).map((d) => ({
+        ...d,
+        isOwner: d.user_id === user.id,
+      })),
+    });
   } catch (error) {
     return jsonError(error);
   }

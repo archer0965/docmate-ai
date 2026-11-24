@@ -4,6 +4,7 @@ import { AppError, jsonError } from "@/lib/errors";
 import { askDocumentQuestion } from "@/lib/gemini/ask";
 import { getPlan } from "@/lib/plans";
 import { assertRateLimit, pruneRateLimitBuckets } from "@/lib/security/rate-limit";
+import { getAccessibleDocument } from "@/lib/teams/access";
 import {
   assertCanAsk,
   getFreshProfile,
@@ -60,17 +61,18 @@ export async function POST(request: Request) {
 
     const { question, documentIds, sessionId } = parsed.data;
 
-    const { data: docs, error: docsError } = await supabase
-      .from("documents")
-      .select("id, title, status")
-      .eq("user_id", user.id)
-      .in("id", documentIds);
-
-    if (docsError) {
-      throw new AppError("internal_error", "無法讀取文件。", 500);
+    const readyDocs: { id: string; title: string }[] = [];
+    for (const docId of documentIds) {
+      try {
+        const doc = await getAccessibleDocument(supabase, user.id, docId);
+        if (doc.status === "ready") {
+          readyDocs.push({ id: doc.id, title: doc.title });
+        }
+      } catch {
+        // 略過無權限或找不到的文件
+      }
     }
 
-    const readyDocs = (docs || []).filter((d) => d.status === "ready");
     if (readyDocs.length === 0) {
       throw new AppError(
         "validation_error",
@@ -79,7 +81,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // 防止越權：只使用本人且就緒的文件
     const allowedIds = readyDocs.map((d) => d.id);
     const titleMap = new Map(readyDocs.map((d) => [d.id, d.title]));
 
@@ -102,7 +103,6 @@ export async function POST(request: Request) {
         .from("document_chunks")
         .select("id, chunk_index, page_number, content")
         .eq("document_id", docId)
-        .eq("user_id", user.id)
         .order("chunk_index", { ascending: true })
         .limit(perDocLimit);
 

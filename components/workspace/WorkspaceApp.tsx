@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UploadPanel } from "@/components/dashboard/UploadPanel";
+import { ShareToTeamButton } from "@/components/teams/ShareToTeamButton";
 import type { Citation, ChatMessageRecord, DocumentRecord } from "@/types";
 
 const SUMMARY_OPTIONS = [
@@ -361,6 +362,11 @@ export function WorkspaceApp({
                             ? "失敗"
                             : "處理中"}
                         {doc.page_count ? ` · ${doc.page_count} 頁` : ""}
+                        {doc.team_id
+                          ? doc.isOwner === false
+                            ? " · 團隊共享"
+                            : " · 已共享"
+                          : ""}
                       </p>
                     </button>
                   </div>
@@ -388,21 +394,28 @@ export function WorkspaceApp({
                 : "從左側選取或上傳 PDF"}
           </p>
         </div>
-        {primaryId && (
-          <div className="flex shrink-0 gap-1">
+        {primaryId && primaryDoc && (
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+            <ShareToTeamButton
+              documentId={primaryId}
+              teamId={primaryDoc.team_id ?? null}
+              isOwner={primaryDoc.isOwner !== false}
+            />
             <a
               href={`/api/documents/${primaryId}/download`}
               className="rounded-lg border border-brand-200 px-2 py-1 text-xs text-slate-700 hover:bg-brand-50"
             >
               下載
             </a>
-            <button
-              type="button"
-              onClick={onDeletePrimary}
-              className="rounded-lg border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
-            >
-              刪除
-            </button>
+            {primaryDoc.isOwner !== false && (
+              <button
+                type="button"
+                onClick={onDeletePrimary}
+                className="rounded-lg border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+              >
+                刪除
+              </button>
+            )}
           </div>
         )}
       </div>

@@ -26,13 +26,44 @@ export default async function DashboardPage() {
   const profile = await getFreshProfile(supabase, user.id);
   const plan = getPlan(profile.plan);
 
-  const { data: documents } = await supabase
+  // RLS：本人 + 團隊共享（team_id 尚未 migration 時後備）
+  let list: {
+    id: string;
+    title: string;
+    file_name: string;
+    file_size: number | null;
+    status: string;
+    page_count: number | null;
+    created_at: string;
+    error_message: string | null;
+    team_id?: string | null;
+    isOwner?: boolean;
+    shared?: boolean;
+  }[] = [];
+
+  const { data: documents, error: docsError } = await supabase
     .from("documents")
     .select(
-      "id, title, file_name, file_size, status, page_count, created_at, error_message",
+      "id, title, file_name, file_size, status, page_count, created_at, error_message, team_id, user_id",
     )
-    .eq("user_id", user.id)
     .order("created_at", { ascending: false });
+
+  if (docsError) {
+    const { data: fallback } = await supabase
+      .from("documents")
+      .select(
+        "id, title, file_name, file_size, status, page_count, created_at, error_message",
+      )
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    list = (fallback || []).map((d) => ({ ...d, isOwner: true, shared: false }));
+  } else {
+    list = (documents || []).map((d) => ({
+      ...d,
+      isOwner: d.user_id === user.id,
+      shared: Boolean(d.team_id) && d.user_id !== user.id,
+    }));
+  }
 
   return (
     <DashboardShell email={user.email}>
@@ -53,6 +84,12 @@ export default async function DashboardPage() {
               開啟 AI 工作區
             </Link>
             <Link
+              href="/dashboard/teams"
+              className="rounded-xl border border-brand-200 px-4 py-2 font-semibold text-brand-800 hover:bg-brand-50"
+            >
+              團隊
+            </Link>
+            <Link
               href="/dashboard/upgrade"
               className="rounded-xl border border-brand-200 px-4 py-2 font-semibold text-brand-800 hover:bg-brand-50"
             >
@@ -68,7 +105,7 @@ export default async function DashboardPage() {
 
         <section>
           <h2 className="mb-3 font-display text-xl font-semibold text-slate-900">我的文件</h2>
-          <DocumentList documents={documents || []} />
+          <DocumentList documents={list} />
         </section>
       </div>
     </DashboardShell>

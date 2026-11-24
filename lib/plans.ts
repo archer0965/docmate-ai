@@ -54,13 +54,13 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     questionsPerMonth: 2000,
     priceTwd: 499,
     maxUploadBytes: 25 * 1024 * 1024, // 25MB
-    blurb: "進階分析與優先處理",
+    blurb: "進階分析、優先處理與團隊協作",
     features: [
       "每月 200 份文件",
       "每月 2,000 次提問",
       "進階文件分析",
       "優先處理",
-      "團隊功能（後續開發）",
+      "團隊協作（建立團隊、邀請成員、共享文件）",
     ],
   },
 };

@@ -3,6 +3,10 @@ import { getAiSafetyLimits } from "@/lib/config/limits";
 import { AppError, jsonError } from "@/lib/errors";
 import { summarizeDocument } from "@/lib/gemini/summarize";
 import { assertRateLimit, pruneRateLimitBuckets } from "@/lib/security/rate-limit";
+import {
+  getAccessibleDocument,
+  isDocumentOwner,
+} from "@/lib/teams/access";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -11,7 +15,7 @@ export const maxDuration = 120;
 type Params = { params: Promise<{ id: string }> };
 
 /**
- * POST：重新分析（以既有 chunks 重產一般摘要，不重複扣文件額度）
+ * POST：重新分析（僅擁有者；以既有 chunks 重產一般摘要）
  */
 export async function POST(_request: Request, { params }: Params) {
   try {
@@ -26,15 +30,9 @@ export async function POST(_request: Request, { params }: Params) {
       message: "重新分析過於頻繁，請稍後再試。",
     });
 
-    const { data: document } = await supabase
-      .from("documents")
-      .select("id, status")
-      .eq("id", id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (!document) {
-      throw new AppError("not_found", "找不到這份文件。", 404);
+    const document = await getAccessibleDocument(supabase, user.id, id);
+    if (!isDocumentOwner(document, user.id)) {
+      throw new AppError("forbidden", "只有文件擁有者可以重新分析。", 403);
     }
 
     const safety = getAiSafetyLimits("free");
@@ -42,7 +40,6 @@ export async function POST(_request: Request, { params }: Params) {
       .from("document_chunks")
       .select("page_number, content, chunk_index")
       .eq("document_id", id)
-      .eq("user_id", user.id)
       .order("chunk_index", { ascending: true })
       .limit(safety.maxChunksForAsk);
 
