@@ -13,6 +13,9 @@ export type DocumentListItem = {
   file_size?: number | null;
   created_at: string;
   error_message: string | null;
+  team_id?: string | null;
+  isOwner?: boolean;
+  shared?: boolean;
 };
 
 const statusLabel: Record<string, string> = {
@@ -132,6 +135,16 @@ export function DocumentList({ documents }: { documents: DocumentListItem[] }) {
                   >
                     {statusLabel[doc.status] || doc.status}
                   </span>
+                  {(doc.shared || (doc.team_id && doc.isOwner === false)) && (
+                    <span className="inline-flex rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">
+                      團隊共享
+                    </span>
+                  )}
+                  {doc.team_id && doc.isOwner !== false && !doc.shared && (
+                    <span className="inline-flex rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">
+                      已共享
+                    </span>
+                  )}
                   <Link
                     href={`/dashboard/workspace?doc=${doc.id}`}
                     className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-medium text-brand-800 hover:bg-brand-50"
@@ -144,22 +157,26 @@ export function DocumentList({ documents }: { documents: DocumentListItem[] }) {
                   >
                     下載
                   </a>
-                  <button
-                    type="button"
-                    disabled={busyId === doc.id}
-                    onClick={() => onReanalyze(doc.id)}
-                    className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                  >
-                    重新分析
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busyId === doc.id}
-                    onClick={() => onDelete(doc.id)}
-                    className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
-                  >
-                    刪除
-                  </button>
+                  {doc.isOwner !== false && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={busyId === doc.id}
+                        onClick={() => onReanalyze(doc.id)}
+                        className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        重新分析
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busyId === doc.id}
+                        onClick={() => onDelete(doc.id)}
+                        className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        刪除
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </li>

@@ -7,6 +7,10 @@ import {
   type SummaryType,
 } from "@/lib/gemini/summarize";
 import { assertRateLimit, pruneRateLimitBuckets } from "@/lib/security/rate-limit";
+import {
+  getAccessibleDocument,
+  isDocumentOwner,
+} from "@/lib/teams/access";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -18,14 +22,12 @@ type Params = { params: Promise<{ id: string }> };
 async function loadPagesFromChunks(
   supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
   documentId: string,
-  userId: string,
   maxChunks: number,
 ) {
   const { data: chunkRows, error } = await supabase
     .from("document_chunks")
     .select("page_number, content, chunk_index")
     .eq("document_id", documentId)
-    .eq("user_id", userId)
     .order("chunk_index", { ascending: true })
     .limit(maxChunks);
 
@@ -57,41 +59,41 @@ export async function GET(_request: Request, { params }: Params) {
     const { id } = await params;
     const { user, supabase } = await requireUser();
 
-    const { data: document } = await supabase
-      .from("documents")
-      .select("id, summary, status")
-      .eq("id", id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (!document) {
-      throw new AppError("not_found", "找不到這份文件。", 404);
-    }
+    const document = await getAccessibleDocument(supabase, user.id, id);
 
     const { data: summaries } = await supabase
       .from("document_summaries")
-      .select("id, summary_type, content, updated_at")
+      .select("id, summary_type, content, updated_at, user_id")
       .eq("document_id", id)
-      .eq("user_id", user.id)
       .order("updated_at", { ascending: false });
 
-    const list = summaries ?? [];
+    const list = (summaries ?? []).filter(
+      (s) => s.user_id === user.id || s.user_id === document.user_id,
+    );
     if (list.length === 0 && document.summary) {
       list.push({
         id: "legacy-general",
         summary_type: "general",
         content: document.summary,
         updated_at: new Date().toISOString(),
+        user_id: document.user_id,
       });
     }
 
-    return NextResponse.json({ summaries: list });
+    return NextResponse.json({
+      summaries: list.map((s) => ({
+        id: s.id,
+        summary_type: s.summary_type,
+        content: s.content,
+        updated_at: s.updated_at,
+      })),
+    });
   } catch (error) {
     return jsonError(error);
   }
 }
 
-/** POST：依類型產生／重新產生摘要（不另扣文件額度；沿用提問額度較合理？規格說摘要是上傳後功能，不另列額度，故不扣提問） */
+/** POST：依類型產生／重新產生摘要 */
 export async function POST(request: Request, { params }: Params) {
   try {
     const { id } = await params;
@@ -122,17 +124,8 @@ export async function POST(request: Request, { params }: Params) {
     }
 
     const type = parsed.data.type as SummaryType;
+    const document = await getAccessibleDocument(supabase, user.id, id);
 
-    const { data: document } = await supabase
-      .from("documents")
-      .select("id, status, summary")
-      .eq("id", id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (!document) {
-      throw new AppError("not_found", "找不到這份文件。", 404);
-    }
     if (document.status !== "ready") {
       throw new AppError("validation_error", "文件尚未就緒。", 409);
     }
@@ -163,14 +156,23 @@ export async function POST(request: Request, { params }: Params) {
       }
     }
 
-    const pages = await loadPagesFromChunks(
-      supabase,
-      id,
-      user.id,
-      safety.maxChunksForAsk,
-    );
-
+    const pages = await loadPagesFromChunks(supabase, id, safety.maxChunksForAsk);
     const content = await summarizeDocument(pages, type);
+    const owner = isDocumentOwner(document, user.id);
+
+    // unique(document_id, summary_type)：僅擁有者持久化，避免覆寫
+    if (!owner) {
+      return NextResponse.json({
+        summary: {
+          id: crypto.randomUUID(),
+          summary_type: type,
+          content,
+          updated_at: new Date().toISOString(),
+        },
+        cached: false,
+        persisted: false,
+      });
+    }
 
     const { data: saved, error } = await supabase
       .from("document_summaries")

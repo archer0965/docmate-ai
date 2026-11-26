@@ -5,6 +5,7 @@ import { AppError, jsonError } from "@/lib/errors";
 import { askDocumentQuestion } from "@/lib/gemini/ask";
 import { getPlan } from "@/lib/plans";
 import { assertRateLimit, pruneRateLimitBuckets } from "@/lib/security/rate-limit";
+import { getAccessibleDocument } from "@/lib/teams/access";
 import {
   assertCanAsk,
   getFreshProfile,
@@ -58,19 +59,7 @@ export async function POST(request: Request, { params }: Params) {
       );
     }
 
-    const { data: document, error: docError } = await supabase
-      .from("documents")
-      .select("id, title, status")
-      .eq("id", id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (docError) {
-      throw new AppError("internal_error", "無法讀取文件。", 500);
-    }
-    if (!document) {
-      throw new AppError("not_found", "找不到這份文件，或你沒有權限。", 404);
-    }
+    const document = await getAccessibleDocument(supabase, user.id, id);
     if (document.status !== "ready") {
       throw new AppError(
         "validation_error",
@@ -83,7 +72,6 @@ export async function POST(request: Request, { params }: Params) {
       .from("document_chunks")
       .select("id, chunk_index, page_number, content")
       .eq("document_id", id)
-      .eq("user_id", user.id)
       .order("chunk_index", { ascending: true })
       .limit(safety.maxChunksForAsk);
 
@@ -187,16 +175,7 @@ export async function GET(_request: Request, { params }: Params) {
     const { id } = await params;
     const { user, supabase } = await requireUser();
 
-    const { data: document } = await supabase
-      .from("documents")
-      .select("id")
-      .eq("id", id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (!document) {
-      throw new AppError("not_found", "找不到這份文件，或你沒有權限。", 404);
-    }
+    await getAccessibleDocument(supabase, user.id, id);
 
     const { data, error } = await supabase
       .from("chat_messages")

@@ -27,17 +27,33 @@ export default async function WorkspacePage({ searchParams }: Props) {
   const plan = getPlan(profile.plan);
   const { doc: docParam } = await searchParams;
 
-  const { data: documents } = await supabase
+  let docs: DocumentRecord[] = [];
+  const { data: documents, error: docsError } = await supabase
     .from("documents")
     .select(
-      "id, title, file_name, file_size, page_count, status, error_message, summary, created_at, updated_at",
+      "id, title, file_name, file_size, page_count, status, error_message, summary, created_at, updated_at, team_id, user_id",
     )
-    .eq("user_id", user.id)
     .order("created_at", { ascending: false });
+
+  if (docsError) {
+    const { data: fallback } = await supabase
+      .from("documents")
+      .select(
+        "id, title, file_name, file_size, page_count, status, error_message, summary, created_at, updated_at",
+      )
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    docs = (fallback || []).map((d) => ({ ...d, isOwner: true })) as DocumentRecord[];
+  } else {
+    docs = (documents || []).map((d) => ({
+      ...d,
+      isOwner: d.user_id === user.id,
+    })) as DocumentRecord[];
+  }
 
   return (
     <WorkspaceApp
-      documents={(documents || []) as DocumentRecord[]}
+      documents={docs}
       initialDocId={docParam || null}
       questionsRemaining={Math.max(plan.questionsPerMonth - profile.questions_used, 0)}
       documentsRemaining={Math.max(plan.documentsPerMonth - profile.documents_used, 0)}

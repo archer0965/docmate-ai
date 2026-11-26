@@ -17,6 +17,9 @@ export type DocumentRecord = {
   updated_at: string;
   content_hash?: string | null;
   source_kind?: "text" | "ocr" | "mixed" | null;
+  team_id?: string | null;
+  user_id?: string;
+  isOwner?: boolean;
 };
 
 export type ChatRole = "user" | "assistant";

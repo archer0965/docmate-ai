@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UploadPanel } from "@/components/dashboard/UploadPanel";
+import { ShareToTeamButton } from "@/components/teams/ShareToTeamButton";
 import type { Citation, ChatMessageRecord, DocumentRecord } from "@/types";
 
 const SUMMARY_OPTIONS = [
@@ -148,26 +149,36 @@ export function WorkspaceApp({
     }
   }, []);
 
-  useEffect(() => {
+  const [trackedInitialDocs, setTrackedInitialDocs] = useState(initialDocuments);
+  if (trackedInitialDocs !== initialDocuments) {
+    setTrackedInitialDocs(initialDocuments);
     setDocuments(initialDocuments);
-  }, [initialDocuments]);
+  }
+
+  const [trackedPrimaryId, setTrackedPrimaryId] = useState(primaryId);
+  if (trackedPrimaryId !== primaryId) {
+    setTrackedPrimaryId(primaryId);
+    setMessages([]);
+    setArtifacts([]);
+    setActiveArtifact(null);
+    setSummaryText(
+      primaryDoc && primaryDoc.status !== "ready"
+        ? primaryDoc.summary || primaryDoc.error_message || "文件尚未就緒"
+        : "",
+    );
+  }
 
   useEffect(() => {
-    if (!primaryId || !primaryDoc) {
-      setMessages([]);
-      setSummaryText("");
-      setArtifacts([]);
-      return;
-    }
-    if (primaryDoc.status === "ready") {
-      void loadMessages(primaryId);
-      void loadSummary(primaryId, summaryType);
-      void loadArtifacts(primaryId);
-    } else {
-      setMessages([]);
-      setSummaryText(primaryDoc.summary || primaryDoc.error_message || "文件尚未就緒");
-      setArtifacts([]);
-    }
+    if (!primaryId || !primaryDoc || primaryDoc.status !== "ready") return;
+    const docId = primaryId;
+    void (async () => {
+      await Promise.all([
+        loadMessages(docId),
+        loadSummary(docId, summaryType),
+        loadArtifacts(docId),
+      ]);
+    })();
+    // 僅在切換文件時載入，避免切換摘要類型時重複請求
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [primaryId]);
 
@@ -361,6 +372,11 @@ export function WorkspaceApp({
                             ? "失敗"
                             : "處理中"}
                         {doc.page_count ? ` · ${doc.page_count} 頁` : ""}
+                        {doc.team_id
+                          ? doc.isOwner === false
+                            ? " · 團隊共享"
+                            : " · 已共享"
+                          : ""}
                       </p>
                     </button>
                   </div>
@@ -388,21 +404,28 @@ export function WorkspaceApp({
                 : "從左側選取或上傳 PDF"}
           </p>
         </div>
-        {primaryId && (
-          <div className="flex shrink-0 gap-1">
+        {primaryId && primaryDoc && (
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+            <ShareToTeamButton
+              documentId={primaryId}
+              teamId={primaryDoc.team_id ?? null}
+              isOwner={primaryDoc.isOwner !== false}
+            />
             <a
               href={`/api/documents/${primaryId}/download`}
               className="rounded-lg border border-brand-200 px-2 py-1 text-xs text-slate-700 hover:bg-brand-50"
             >
               下載
             </a>
-            <button
-              type="button"
-              onClick={onDeletePrimary}
-              className="rounded-lg border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
-            >
-              刪除
-            </button>
+            {primaryDoc.isOwner !== false && (
+              <button
+                type="button"
+                onClick={onDeletePrimary}
+                className="rounded-lg border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+              >
+                刪除
+              </button>
+            )}
           </div>
         )}
       </div>

@@ -8,6 +8,7 @@ import {
 } from "@/lib/gemini/study";
 import { getPlan } from "@/lib/plans";
 import { assertRateLimit, pruneRateLimitBuckets } from "@/lib/security/rate-limit";
+import { getAccessibleDocument } from "@/lib/teams/access";
 import {
   assertCanAsk,
   getFreshProfile,
@@ -25,14 +26,12 @@ type Params = { params: Promise<{ id: string }> };
 async function loadPagesFromChunks(
   supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
   documentId: string,
-  userId: string,
   maxChunks: number,
 ) {
   const { data: chunkRows, error } = await supabase
     .from("document_chunks")
     .select("page_number, content, chunk_index")
     .eq("document_id", documentId)
-    .eq("user_id", userId)
     .order("chunk_index", { ascending: true })
     .limit(maxChunks);
 
@@ -53,35 +52,37 @@ async function loadPagesFromChunks(
     .map(([pageNumber, parts]) => ({ pageNumber, text: parts.join("\n") }));
 }
 
-/** GET：列出學習產物 */
+/** GET：列出學習產物（本人 + 文件擁有者在共享文件上的產物） */
 export async function GET(_request: Request, { params }: Params) {
   try {
     const { id } = await params;
     const { user, supabase } = await requireUser();
 
-    const { data: document } = await supabase
-      .from("documents")
-      .select("id")
-      .eq("id", id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (!document) {
-      throw new AppError("not_found", "找不到這份文件。", 404);
-    }
+    const document = await getAccessibleDocument(supabase, user.id, id);
 
     const { data, error } = await supabase
       .from("study_artifacts")
-      .select("id, artifact_type, title, payload, question_count, created_at, updated_at")
+      .select("id, artifact_type, title, payload, question_count, created_at, updated_at, user_id")
       .eq("document_id", id)
-      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
     if (error) {
       return NextResponse.json({ artifacts: [] });
     }
 
-    return NextResponse.json({ artifacts: data ?? [] });
+    const artifacts = (data ?? [])
+      .filter((a) => a.user_id === user.id || a.user_id === document.user_id)
+      .map((a) => ({
+        id: a.id,
+        artifact_type: a.artifact_type,
+        title: a.title,
+        payload: a.payload,
+        question_count: a.question_count,
+        created_at: a.created_at,
+        updated_at: a.updated_at,
+      }));
+
+    return NextResponse.json({ artifacts });
   } catch (error) {
     return jsonError(error);
   }
@@ -89,13 +90,9 @@ export async function GET(_request: Request, { params }: Params) {
 
 /** POST：產生筆記／考題／閃卡等（扣除 1 次提問額度） */
 export async function POST(request: Request, { params }: Params) {
-  let reserved = false;
-  let uid: string | null = null;
-
   try {
     const { id } = await params;
     const { user, supabase } = await requireUser();
-    uid = user.id;
     pruneRateLimitBuckets();
 
     const profile = await getFreshProfile(supabase, user.id);
@@ -125,36 +122,20 @@ export async function POST(request: Request, { params }: Params) {
     const type = parsed.data.type as StudyType;
     const count = parsed.data.count ?? 5;
 
-    const { data: document } = await supabase
-      .from("documents")
-      .select("id, status")
-      .eq("id", id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (!document) {
-      throw new AppError("not_found", "找不到這份文件。", 404);
-    }
+    const document = await getAccessibleDocument(supabase, user.id, id);
     if (document.status !== "ready") {
       throw new AppError("validation_error", "文件尚未就緒。", 409);
     }
 
-    const pages = await loadPagesFromChunks(
-      supabase,
-      id,
-      user.id,
-      safety.maxChunksForAsk,
-    );
+    const pages = await loadPagesFromChunks(supabase, id, safety.maxChunksForAsk);
 
     await reserveQuestionSlot(user.id, plan.questionsPerMonth);
-    reserved = true;
 
     let generated;
     try {
       generated = await generateStudyArtifact(pages, type, count);
     } catch (aiError) {
       await releaseQuestionSlot(user.id);
-      reserved = false;
       throw aiError;
     }
 
@@ -172,7 +153,6 @@ export async function POST(request: Request, { params }: Params) {
       .single();
 
     if (error || !artifact) {
-      // 表尚未建立時仍回傳結果（不持久化）
       return NextResponse.json({
         artifact: {
           id: crypto.randomUUID(),

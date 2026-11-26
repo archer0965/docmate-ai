@@ -1,33 +1,24 @@
 import { requireUser } from "@/lib/auth/require-user";
 import { AppError, jsonError } from "@/lib/errors";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getAccessibleDocument } from "@/lib/teams/access";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
 type Params = { params: Promise<{ id: string }> };
 
-/** GET：下載原始 PDF（僅本人） */
+/** GET：下載原始 PDF（擁有者或團隊成員） */
 export async function GET(_request: Request, { params }: Params) {
   try {
     const { id } = await params;
     const { user, supabase } = await requireUser();
 
-    const { data: document, error } = await supabase
-      .from("documents")
-      .select("id, file_name, storage_path")
-      .eq("id", id)
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const document = await getAccessibleDocument(supabase, user.id, id);
 
-    if (error) {
-      throw new AppError("internal_error", "無法讀取文件。", 500);
-    }
-    if (!document) {
-      throw new AppError("not_found", "找不到這份文件，或你沒有權限。", 404);
-    }
-
-    // 優先簽章 URL（較穩定）；失敗則直接串流
-    const { data: signed, error: signedError } = await supabase.storage
+    // 團隊共享時 storage 路徑在擁有者資料夾；以 admin 簽章避免 storage RLS 卡關
+    const admin = createAdminClient();
+    const { data: signed, error: signedError } = await admin.storage
       .from("documents")
       .createSignedUrl(document.storage_path, 60);
 
@@ -35,7 +26,7 @@ export async function GET(_request: Request, { params }: Params) {
       return NextResponse.redirect(signed.signedUrl, 302);
     }
 
-    const { data: file, error: downloadError } = await supabase.storage
+    const { data: file, error: downloadError } = await admin.storage
       .from("documents")
       .download(document.storage_path);
 

@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth/require-user";
 import { AppError, jsonError } from "@/lib/errors";
+import { getAccessibleDocument } from "@/lib/teams/access";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -18,22 +19,13 @@ export async function GET(request: Request, { params }: Params) {
     const page = url.searchParams.get("page");
     const chunkIndex = url.searchParams.get("chunkIndex");
 
-    const { data: document } = await supabase
-      .from("documents")
-      .select("id, title")
-      .eq("id", id)
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const document = await getAccessibleDocument(supabase, user.id, id);
 
-    if (!document) {
-      throw new AppError("not_found", "找不到這份文件，或你沒有權限。", 404);
-    }
-
+    // chunks 屬文件擁有者；依 document_id 讀取（RLS 允許團隊）
     let query = supabase
       .from("document_chunks")
       .select("id, chunk_index, page_number, content")
       .eq("document_id", id)
-      .eq("user_id", user.id)
       .order("chunk_index", { ascending: true })
       .limit(40);
 
@@ -52,7 +44,22 @@ export async function GET(request: Request, { params }: Params) {
 
     const { data, error } = await query;
     if (error) {
-      throw new AppError("internal_error", "無法讀取段落。", 500);
+      // 後備：僅本人 chunks
+      const { data: fallback, error: fallbackError } = await supabase
+        .from("document_chunks")
+        .select("id, chunk_index, page_number, content")
+        .eq("document_id", id)
+        .eq("user_id", document.user_id)
+        .order("chunk_index", { ascending: true })
+        .limit(40);
+      if (fallbackError) {
+        throw new AppError("internal_error", "無法讀取段落。", 500);
+      }
+      return NextResponse.json({
+        documentId: document.id,
+        title: document.title,
+        chunks: fallback ?? [],
+      });
     }
 
     return NextResponse.json({
