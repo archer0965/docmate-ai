@@ -7,7 +7,7 @@ export const NOVAOS_HUB_URL =
 
 export const NOVAOS_LEGAL_URL = `${NOVAOS_HUB_URL}/legal`;
 
-export const NOVAOS_BILLING_PATH = "/dashboard/pass#upgrade";
+export const NOVAOS_BILLING_PATH = "/dashboard/pass?product=ai_doc#upgrade";
 
 const PRODUCT = "docmate";
 
