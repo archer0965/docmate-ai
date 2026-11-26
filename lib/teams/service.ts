@@ -134,6 +134,27 @@ export function newInviteToken() {
   return randomBytes(24).toString("hex");
 }
 
+const USER_LOOKUP_PAGE_SIZE = 1000;
+const USER_LOOKUP_MAX_PAGES = 50;
+
+async function findUserIdByEmail(email: string) {
+  const admin = createAdminClient();
+  for (let page = 1; page <= USER_LOOKUP_MAX_PAGES; page += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({
+      page,
+      perPage: USER_LOOKUP_PAGE_SIZE,
+    });
+    if (error) {
+      throw new AppError("internal_error", "無法查詢使用者。", 500);
+    }
+    const users = data?.users ?? [];
+    const found = users.find((u) => u.email?.toLowerCase() === email);
+    if (found) return { id: found.id };
+    if (users.length < USER_LOOKUP_PAGE_SIZE) break;
+  }
+  return null;
+}
+
 export async function createInvite(options: {
   supabase: SupabaseClient;
   teamId: string;
@@ -172,11 +193,7 @@ export async function createInvite(options: {
   }
 
   // 若已是成員
-  const admin = createAdminClient();
-  const { data: usersPage } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-  const existingUser = usersPage?.users?.find(
-    (u) => u.email?.toLowerCase() === email,
-  );
+  const existingUser = await findUserIdByEmail(email);
 
   if (existingUser) {
     const membership = await getMembership(supabase, teamId, existingUser.id);

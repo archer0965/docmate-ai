@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 
 type TeamOption = {
   role: string;
@@ -17,24 +17,18 @@ export function ShareToTeamButton({
   isOwner: boolean;
 }) {
   const [teams, setTeams] = useState<TeamOption[]>([]);
-  const [currentTeamId, setCurrentTeamId] = useState<string | null>(teamId);
+  const [sharedOverride, setSharedOverride] = useState<{
+    documentId: string;
+    teamId: string | null;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
 
-  const loadTeams = useCallback(async () => {
-    const res = await fetch("/api/teams");
-    const json = await res.json().catch(() => ({}));
-    if (res.ok) setTeams(json.teams || []);
-  }, []);
-
-  useEffect(() => {
-    if (open) void loadTeams();
-  }, [open, loadTeams]);
-
-  useEffect(() => {
-    setCurrentTeamId(teamId);
-  }, [teamId]);
+  const currentTeamId =
+    sharedOverride && sharedOverride.documentId === documentId
+      ? sharedOverride.teamId
+      : teamId;
 
   if (!isOwner) {
     if (!currentTeamId) return null;
@@ -43,6 +37,18 @@ export function ShareToTeamButton({
         團隊共享
       </span>
     );
+  }
+
+  async function loadTeams() {
+    const res = await fetch("/api/teams");
+    const json = await res.json().catch(() => ({}));
+    if (res.ok) setTeams(json.teams || []);
+  }
+
+  function toggle() {
+    const next = !open;
+    setOpen(next);
+    if (next) void loadTeams();
   }
 
   async function share(next: string | null) {
@@ -56,7 +62,10 @@ export function ShareToTeamButton({
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error?.message || "無法更新共享");
-      setCurrentTeamId(json.document?.team_id ?? next);
+      setSharedOverride({
+        documentId,
+        teamId: json.document?.team_id ?? next,
+      });
       setOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "無法更新共享");
@@ -69,7 +78,7 @@ export function ShareToTeamButton({
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-medium text-brand-800 hover:bg-brand-50"
       >
         {currentTeamId ? "管理共享" : "共享到團隊"}
@@ -92,7 +101,7 @@ export function ShareToTeamButton({
                     className={`w-full rounded-lg px-2 py-1.5 text-left text-xs ${
                       currentTeamId === row.team.id
                         ? "bg-brand-600 text-white"
-                        : "hover:bg-brand-50 text-slate-700"
+                        : "text-slate-700 hover:bg-brand-50"
                     }`}
                   >
                     {row.team.name}

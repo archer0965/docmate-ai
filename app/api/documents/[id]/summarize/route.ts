@@ -81,7 +81,12 @@ export async function GET(_request: Request, { params }: Params) {
     }
 
     return NextResponse.json({
-      summaries: list.map(({ user_id: _u, ...rest }) => rest),
+      summaries: list.map((s) => ({
+        id: s.id,
+        summary_type: s.summary_type,
+        content: s.content,
+        updated_at: s.updated_at,
+      })),
     });
   } catch (error) {
     return jsonError(error);

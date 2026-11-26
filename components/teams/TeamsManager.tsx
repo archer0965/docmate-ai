@@ -64,17 +64,6 @@ export function TeamsManager({
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const loadTeams = useCallback(async () => {
-    const res = await fetch("/api/teams");
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(json?.error?.message || "無法載入團隊");
-      setTeams([]);
-      return;
-    }
-    setTeams(json.teams || []);
-  }, []);
-
   const loadDetail = useCallback(async (id: string) => {
     const res = await fetch(`/api/teams/${id}`);
     const json = await res.json().catch(() => ({}));
@@ -90,6 +79,31 @@ export function TeamsManager({
     setDocuments(json.documents || []);
   }, []);
 
+  const loadTeams = useCallback(
+    async (preferId?: string | null) => {
+      const res = await fetch("/api/teams");
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(json?.error?.message || "無法載入團隊");
+        setTeams([]);
+        setSelectedId(null);
+        return;
+      }
+      const list: TeamRow[] = json.teams || [];
+      setTeams(list);
+      const nextId =
+        preferId && list.some((t) => t.team.id === preferId)
+          ? preferId
+          : list[0]?.team.id ?? null;
+      if (nextId) {
+        await loadDetail(nextId);
+      } else {
+        setSelectedId(null);
+      }
+    },
+    [loadDetail],
+  );
+
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -97,21 +111,6 @@ export function TeamsManager({
       setLoading(false);
     })();
   }, [loadTeams]);
-
-  useEffect(() => {
-    if (teams.length === 0) {
-      setSelectedId(null);
-      return;
-    }
-    setSelectedId((prev) => {
-      const nextId =
-        prev && teams.some((t) => t.team.id === prev) ? prev : teams[0].team.id;
-      void loadDetail(nextId);
-      return nextId;
-    });
-    // 僅在 teams 清單變更時同步選取
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teams, loadDetail]);
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -128,7 +127,7 @@ export function TeamsManager({
       if (!res.ok) throw new Error(json?.error?.message || "建立失敗");
       setCreateName("");
       setMessage("團隊已建立");
-      await loadTeams();
+      await loadTeams(json.team?.id ?? null);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "建立失敗");
@@ -151,7 +150,7 @@ export function TeamsManager({
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error?.message || "更新失敗");
       setMessage("團隊名稱已更新");
-      await loadTeams();
+      await loadTeams(selectedId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "更新失敗");
     } finally {
@@ -239,7 +238,7 @@ export function TeamsManager({
       if (!res.ok) throw new Error(json?.error?.message || "解散失敗");
       setMessage("團隊已解散");
       setSelectedId(null);
-      await loadTeams();
+      await loadTeams(null);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "解散失敗");

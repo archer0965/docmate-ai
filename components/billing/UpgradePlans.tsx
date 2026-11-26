@@ -30,7 +30,7 @@ export function UpgradePlans({
     if (planId === "free") return;
     setLoadingPlan(planId);
     // 統一導向拓新雲端主站綠界結帳（同一 Supabase 帳號）
-    window.location.href = getNovaOsUpgradeUrl();
+    window.location.assign(getNovaOsUpgradeUrl());
   }
 
   return (

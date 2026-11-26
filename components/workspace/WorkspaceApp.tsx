@@ -149,26 +149,36 @@ export function WorkspaceApp({
     }
   }, []);
 
-  useEffect(() => {
+  const [trackedInitialDocs, setTrackedInitialDocs] = useState(initialDocuments);
+  if (trackedInitialDocs !== initialDocuments) {
+    setTrackedInitialDocs(initialDocuments);
     setDocuments(initialDocuments);
-  }, [initialDocuments]);
+  }
+
+  const [trackedPrimaryId, setTrackedPrimaryId] = useState(primaryId);
+  if (trackedPrimaryId !== primaryId) {
+    setTrackedPrimaryId(primaryId);
+    setMessages([]);
+    setArtifacts([]);
+    setActiveArtifact(null);
+    setSummaryText(
+      primaryDoc && primaryDoc.status !== "ready"
+        ? primaryDoc.summary || primaryDoc.error_message || "文件尚未就緒"
+        : "",
+    );
+  }
 
   useEffect(() => {
-    if (!primaryId || !primaryDoc) {
-      setMessages([]);
-      setSummaryText("");
-      setArtifacts([]);
-      return;
-    }
-    if (primaryDoc.status === "ready") {
-      void loadMessages(primaryId);
-      void loadSummary(primaryId, summaryType);
-      void loadArtifacts(primaryId);
-    } else {
-      setMessages([]);
-      setSummaryText(primaryDoc.summary || primaryDoc.error_message || "文件尚未就緒");
-      setArtifacts([]);
-    }
+    if (!primaryId || !primaryDoc || primaryDoc.status !== "ready") return;
+    const docId = primaryId;
+    void (async () => {
+      await Promise.all([
+        loadMessages(docId),
+        loadSummary(docId, summaryType),
+        loadArtifacts(docId),
+      ]);
+    })();
+    // 僅在切換文件時載入，避免切換摘要類型時重複請求
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [primaryId]);
 

@@ -72,7 +72,15 @@ export async function GET(_request: Request, { params }: Params) {
 
     const artifacts = (data ?? [])
       .filter((a) => a.user_id === user.id || a.user_id === document.user_id)
-      .map(({ user_id: _u, ...rest }) => rest);
+      .map((a) => ({
+        id: a.id,
+        artifact_type: a.artifact_type,
+        title: a.title,
+        payload: a.payload,
+        question_count: a.question_count,
+        created_at: a.created_at,
+        updated_at: a.updated_at,
+      }));
 
     return NextResponse.json({ artifacts });
   } catch (error) {
