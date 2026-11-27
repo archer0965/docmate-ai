@@ -32,7 +32,15 @@ function retiredResponse() {
  * 刷新登入 Session，並保護 /dashboard 路徑
  */
 export async function middleware(request: NextRequest) {
-  if (SERVICE_RETIRED) return retiredResponse();
+  if (
+    SERVICE_RETIRED &&
+    request.nextUrl.pathname !== "/api/internal/novashield-analyze"
+  ) {
+    return retiredResponse();
+  }
+  if (request.nextUrl.pathname === "/api/internal/novashield-analyze") {
+    return NextResponse.next();
+  }
 
   let response = NextResponse.next({
     request: {
